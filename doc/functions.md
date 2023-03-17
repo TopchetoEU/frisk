@@ -50,15 +50,15 @@ func(a: int, b: int) {
     printf("%d", a + b);
 }
 export main() {
-    func1(10, 5); // a = 10; b = 5 // 15
-    func1(10 + 1, 5 - 3); // a = 11; b = 2 // 13
-    func1(10); // Compiler error: mismatch between func's parameter list and passed arguments
+    func(10, 5); // a = 10; b = 5 // 15
+    func(10 + 1, 5 - 3); // a = 11; b = 2 // 13
+    func(10); // Compiler error: no overload found for given arguments (int). Overloads: (int, int): void
 }
 ```
 
-## Return value
+## Return value(s)
 
-A function can have a return value. This is used when the function has some data it wants to give back to the callee. When the callee returns, it stops execution and returns to the point at which the callee was called. The call expression will have the value of the return value of the function
+A function can have one or more return values. This is used when the function has some data it wants to give back to the callee. When the callee returns, it stops execution and returns to the point at which the callee was called. The call expression will have the value of the return value of the function
 
 ```c++
 int func(int a, int b) {

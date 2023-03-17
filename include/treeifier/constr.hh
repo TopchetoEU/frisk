@@ -3,6 +3,7 @@
 #include "utils/message.hh"
 #include "lang/common.hh"
 #include "treeifier/tokenizer.hh"
+#include "treeifier/constructs/type.hh"
 #include <iostream>
 #include <map>
 #include <memory>
@@ -11,12 +12,13 @@
 #include <unordered_map>
 #include <unordered_set>
 
-using namespace std::string_literals;
 
 namespace ppc::tree {
     using namespace ppc;
     using namespace ppc::lang;
     using namespace ppc::messages;
+    using namespace ppc::tree::constr;
+    using namespace std::string_literals;
 
     struct parse_ctx_t {
     public:
@@ -32,6 +34,8 @@ namespace ppc::tree {
         bool parse_identifier(parse_ctx_t &ctx, size_t &res_i, located_t<std::string> &out);
         bool parse_nmsp(parse_ctx_t &ctx, size_t &res_i, loc_nmsp_t &out);
         bool parse_nmsp_id(parse_ctx_t &ctx, size_t &res_i, std::set<nmsp_t> imports, nmsp_t nmsp);
+        bool parse_type(parse_ctx_t &ctx, size_t &res_i, type_t &res);
+        bool check_operator(parse_ctx_t &ctx, size_t &res_i, operator_t op);
     }
 
 

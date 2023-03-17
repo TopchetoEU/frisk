@@ -32,10 +32,7 @@ static bool read_line(std::istream &str, std::string &res) {
 }
 
 fs::path find_file(fs::path original, fs::path include) {
-    if (fs::exists(original)) {
-        std::cout << original;
-        return original;
-    }
+    if (fs::exists(original)) return original;
     if (fs::exists(include / original)) return include / original;
     throw "The include '" + original.string() + "' doesn't exist.";
 }

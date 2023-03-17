@@ -16,10 +16,11 @@ namespace ppc::tree::constr {
     struct global_t;
 
     struct definition_t {
-        virtual std::string name() const = 0;
-
-        virtual bool verify(msg_stack_t &msg_stack, global_t &glob) const { return true; }
-        virtual bool simplify(global_t &glob) const { return false; }
+        #ifdef PROFILE_debug
+        virtual void print() const {
+            std::cout << "(unknown)";
+        }
+        #endif
     };
 
     struct global_t {
@@ -33,6 +34,11 @@ namespace ppc::tree::constr {
             std::cout << "Imports:\n";
             for (auto &imp : imports) {
                 std::cout << " - " << imp.to_string() << "\n";
+            }
+            std::cout << "Defs:\n\n";
+            for (auto &def : defs) {
+                def->print();
+                std::cout << "\n";
             }
         }
         #endif

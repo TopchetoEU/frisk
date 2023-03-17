@@ -46,3 +46,9 @@ bool parse::parse_nmsp_id(parse_ctx_t &ctx, size_t &res_i, std::set<nmsp_t> glob
     if (resolve_name(glob, src, nmsp)) return h.submit(false);
     else return false;
 }
+
+bool parse::parse_type(parse_ctx_t &ctx, size_t &res_i, type_t &res) {
+    helper_t h(ctx, res_i);
+    res = {};
+    return h.parse(parse_nmsp, res.name);
+}
