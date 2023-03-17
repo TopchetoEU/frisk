@@ -16,7 +16,7 @@
 
 #endif
 
-#include "./opions.hh"
+#include "main/options.hh"
 #include "treeifier/lexer.hh"
 #include "treeifier/tokenizer.hh"
 #include "treeifier/constructs/glob.hh"

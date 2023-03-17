@@ -17,6 +17,10 @@ namespace ppc::tree::parse {
         void throw_ended(const std::string &reason) {
             if (ended()) throw messages::message_t(message_t::ERROR, "Unexpected end: " + reason, loc());
         }
+        
+        messages::msg_stack_t &msgs() {
+            return ctx.messages;
+        }
 
         location_t loc(size_t n) {
             location_t res = prev_loc();

@@ -32,7 +32,7 @@ $(binary): $$(call frdeps,$(mainmodule)) $$(call binaries,$(mainmodule))
 	echo Compiling executable '$(notdir $(binary))'...
 
 .SECONDEXPANSION:
-$(bin)/lib$(lib)%$(so): $$(call frdeps,$$*) $$(call binaries,$$*)
+$(bin)/lib$(lib)%$(so): $$(call frdeps,%) $$(call binaries,%)
 	$(call mkdir,$(bin))
 	$(CXX) -shared -fPIC $(flags) $(call binaries,$*) -o $@ $(ldflags) $(call ldeps,$*) -L$(bin) "-I$(inc)"
 	echo Compiling library '$(notdir $@)'...
@@ -42,3 +42,5 @@ $(bin)/tmp/%.o: $(src)/%.cc $$(shell $(lsinc) $(inc) $(src)/%.cc)
 	$(call mkdir,$(dir $@))
 	$(CXX) -fPIC -c $(flags) $< -o $@
 	echo - Compiling '$*.cc'...
+
+$(src)/%.hh:
