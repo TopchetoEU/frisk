@@ -1,0 +1,5 @@
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang.Main/obj/Debug/net7.0/TopchetoEU.PpcLang.Main.csproj.AssemblyReference.cache
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang.Main/obj/Debug/net7.0/TopchetoEU.PpcLang.Main.GeneratedMSBuildEditorConfig.editorconfig
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang.Main/obj/Debug/net7.0/TopchetoEU.PpcLang.Main.AssemblyInfoInputs.cache
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang.Main/obj/Debug/net7.0/TopchetoEU.PpcLang.Main.AssemblyInfo.cs
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang.Main/obj/Debug/net7.0/TopchetoEU.PpcLang.Main.csproj.CoreCompileInputs.cache

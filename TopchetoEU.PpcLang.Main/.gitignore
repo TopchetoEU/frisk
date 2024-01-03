@@ -3,3 +3,4 @@
 !/Utils
 !/.gitignore
 !/*.csproj
+!/obj

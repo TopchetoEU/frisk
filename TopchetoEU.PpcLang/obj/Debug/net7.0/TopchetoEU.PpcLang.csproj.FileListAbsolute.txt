@@ -1,0 +1,12 @@
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang/bin/Debug/net7.0/TopchetoEU.PpcLang.deps.json
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang/bin/Debug/net7.0/TopchetoEU.PpcLang.dll
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang/bin/Debug/net7.0/TopchetoEU.PpcLang.pdb
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang/obj/Debug/net7.0/TopchetoEU.PpcLang.csproj.AssemblyReference.cache
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang/obj/Debug/net7.0/TopchetoEU.PpcLang.GeneratedMSBuildEditorConfig.editorconfig
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang/obj/Debug/net7.0/TopchetoEU.PpcLang.AssemblyInfoInputs.cache
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang/obj/Debug/net7.0/TopchetoEU.PpcLang.AssemblyInfo.cs
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang/obj/Debug/net7.0/TopchetoEU.PpcLang.csproj.CoreCompileInputs.cache
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang/obj/Debug/net7.0/TopchetoEU.PpcLang.dll
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang/obj/Debug/net7.0/refint/TopchetoEU.PpcLang.dll
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang/obj/Debug/net7.0/TopchetoEU.PpcLang.pdb
+/mnt/data/repos/ppc-lang2/TopchetoEU.PpcLang/obj/Debug/net7.0/ref/TopchetoEU.PpcLang.dll
