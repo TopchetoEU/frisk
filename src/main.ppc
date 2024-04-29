@@ -1,0 +1,17 @@
+main(args) {
+    const sources = arr();
+
+    let i = 0;
+
+    while i < arr::len(args) {
+        arr::append(sources, std::read_all(arr::at(args, i)));
+
+        const src = arr::at(sources, i);
+
+        print(def::parse_file(src));
+
+        i =  i + 1;
+    }
+}
+
+entry: main(asm "Deno.args");
