@@ -1,37 +1,37 @@
-not(a): asm "return !$$a";
-and(a, b): asm "return $$a & $$b";
-or(a, b): asm "return $$a | $$b";
-xor(a, b): asm "return $$a ^ $$b";
+not(a): asm::js "return !$$a";
+and(a, b): asm::js "return $$a & $$b";
+or(a, b): asm::js "return $$a | $$b";
+xor(a, b): asm::js "return $$a ^ $$b";
 
-rand(min, max): asm "return BigInt(Math.floor(Math.random() * Number($$max - $$min))) + $$min";
-print(): asm "console.log.apply(console, arguments)";
+rand(min, max): asm::js "return BigInt(Math.floor(Math.random() * Number($$max - $$min))) + $$min";
+print(): asm::js "console.log.apply(console, arguments)";
 
-const std::in = asm "Deno.stdin";
-const std::out = asm "Deno.stdout";
-const void = asm "undefined";
-const true = asm "true";
-const false = asm "false";
+const std::in = asm::js "Deno.stdin";
+const std::out = asm::js "Deno.stdout";
+const void = asm::js "undefined";
+const true = asm::js "true";
+const false = asm::js "false";
 
-object(): asm "return {}";
+object(): asm::js "return {}";
 
 
-arr(): asm "return Array.apply(undefined, arguments)";
-arr::at(arr, i): asm "return $$arr[Number($$i)]";
-arr::len(arr): asm "return BigInt($$arr.length)";
-arr::append(arr, el): asm "return $$arr.push($$el)";
+arr(): asm::js "return Array.apply(undefined, arguments)";
+arr::at(arr, i): asm::js "return $$arr[Number($$i)]";
+arr::len(arr): asm::js "return BigInt($$arr.length)";
+arr::append(arr, el): asm::js "return $$arr.push($$el)";
 
-str::at(str, i): asm "
+str::at(str, i): asm::js "
     const res = $$str[Number($$i)];
     if (res == null) return $$void;
     else return BigInt(res.charCodeAt());
 ";
-str::len(str): asm "return BigInt($$str.length)";
-str::cat(): asm "return [...arguments].flat().join('')";
+str::len(str): asm::js "return BigInt($$str.length)";
+str::cat(): asm::js "return [...arguments].flat().join('')";
 
 char::is_upper(char): return char >= 'A' & char <= 'Z';
 char::is_lower(char): return char >= 'a' & char <= 'z';
 char::is_num(char): return char >= '0' & char <= '9';
 char::is_hex(char): return char::is_num(char) | (char >= 'A' & char <= 'F') | (char >= 'a' & char <= 'z');
-char::to_string(char): return asm "String.fromCharCode(Number($$char))";
+char::to_string(char): return asm::js "String.fromCharCode(Number($$char))";
 
-std::read_all(file): asm "return new TextDecoder().decode(Deno.readFileSync($$file))";
+std::read_all(file): asm::js "return new TextDecoder().decode(Deno.readFileSync($$file))";

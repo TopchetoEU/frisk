@@ -1,17 +1,20 @@
 main(args) {
-    const sources = arr();
-
     let i = 0;
+    const defs = arr();
 
     while i < arr::len(args) {
-        arr::append(sources, std::read_all(arr::at(args, i)));
+        const f = arr::at(args, i);
+        const s = std::read_all(f);
 
-        const src = arr::at(sources, i);
-
-        print(def::parse_file(src));
+        const res = def::parse_file(f, s);
+        if res.msg != void: print(to_loc(s, res.loc, f) + ": " + res.msg);
+        if res.res != void: print(asm::js "JSON.stringify($$res.res)");
 
         i =  i + 1;
     }
 }
 
-entry: main(asm "Deno.args");
+entry {
+    asm::js "BigInt.prototype.toJSON = function() { return Number(this).toString(); }";
+    main(asm::js "Deno.args");
+}

@@ -1,6 +1,6 @@
 import { Consumer } from "./Consumer.ts";
 import { Message } from "../utils/Message.ts";
-import { Namespace } from "../utils/Namespace.ts";
+import { Namespace, nmsp } from "../utils/Namespace.ts";
 import { Operator } from "../utils/Operator.ts";
 import { Node } from "./Node.ts";
 
@@ -141,10 +141,11 @@ export class AsmNode implements Node {
     public toJS() { return this.data; }
 
     public static parse(c: Consumer, i: number) {
-        if (!c.get(i)?.isIdentifier("asm")) return ParseResult.fail;
+        const id = parseIdentifier(c, i, nmsp`asm::js`);
+        if (id.failed) return ParseResult.fail;
 
-        if (!c.get(i + 1)?.stringLiteral) return ParseResult.fail;
+        if (!c.get(i + id.n)?.stringLiteral) return ParseResult.fail;
 
-        return ParseResult.res(new AsmNode(String.fromCodePoint(...c.get(i + 1)?.stringLiteral!)), 2);
+        return ParseResult.res(new AsmNode(String.fromCodePoint(...c.get(i + id.n)?.stringLiteral!)), id.n + 1);
     }
 }
