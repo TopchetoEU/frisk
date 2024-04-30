@@ -43,25 +43,40 @@ parse_keyword(s, i, kw) {
 
 parse_identifier(s, i) {
     let n = skip_white(s, i);
+    const loc = i + n;
 
     const first = parse_keyword(s, i + n);
-    if first.res == void: return parse_res::fail;
+    if first.res == void: return first;
     n = n + first.n;
 
     let res = first.res;
 
-    do {
-        const colons = parse_keyword(s, i + n, "::");
-        if colons.res == void: return parse_res::val(res, n);
+    do: const colons = parse_keyword(s, i + n, "::");
+    while (colons.res != void) {
         n = n + colons.n;
         res = res + "::";
 
         const word = parse_keyword(s, i + n);
-        if word.res == void: return parse_res::err("Expected an identifier after '::'", i + n);
+        if word.res == void: return parse_res::err("Expected an identifier after '::'", i + n, word);
         n = n + word.n;
 
         res = res + word.res;
     }
+
+    let underscores = 0;
+    let j = 0;
+
+    while j < str::len(res) {
+        if str::at(res, j) == '_' {
+            underscores = underscores + 1;
+            if underscores >= 3: return parse_res::err("Too many sequential underscores", loc + j - underscores + 1);
+        }
+        else: underscores = 0;
+
+        j = j + 1;
+    }
+
+    return parse_res::val(res, n);
 }
 
 node(type, loc) {
