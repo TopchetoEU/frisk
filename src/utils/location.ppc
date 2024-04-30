@@ -1,0 +1,19 @@
+to_loc(s, i, f) {
+    let row = 1;
+    let col = 1;
+    let j = 0;
+
+    do: const c = str::at(s, j);
+    while c != void & j < i {
+        if c == '\n' {
+            row = row + 1;
+            col = 1;
+        }
+        else: col = col + 1;
+
+        j = j + 1;
+    }
+
+    if f != void: return f + ":" + row + ":" + col;
+    else: return row + ":" + col;
+}

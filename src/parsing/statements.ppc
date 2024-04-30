@@ -1,26 +1,26 @@
-stm::parse(s, i, semicolon) {
+stm::parse(f, s, i, semicolon) {
     let op;
 
-    const var_decl = stm::var_decl::parse(s, i, semicolon);
+    const var_decl = stm::var_decl::parse(f, s, i, semicolon);
     if var_decl.msg != void | var_decl.res != void: return var_decl;
-    const _if = stm::if::parse(s, i, semicolon);
+    const _if = stm::if::parse(f, s, i, semicolon);
     if _if.msg != void | _if.res != void: return _if;
-    const loop = stm::loop::parse(s, i, semicolon);
+    const loop = stm::loop::parse(f, s, i, semicolon);
     if loop.msg != void | loop.res != void: return loop;
-    const return = stm::return::parse(s, i, semicolon);
+    const return = stm::return::parse(f, s, i, semicolon);
     if return.msg != void | return.res != void: return return;
 
-    const compound = stm::compound::parse(s, i, semicolon);
+    const compound = stm::compound::parse(f, s, i, semicolon);
     if compound.msg != void | compound.res != void: return compound;
-    const noop = stm::noop::parse(s, i, semicolon);
+    const noop = stm::noop::parse(f, s, i, semicolon);
     if noop.msg != void | noop.res != void: return noop;
-    const exp = stm::exp::parse(s, i, semicolon);
+    const exp = stm::exp::parse(f, s, i, semicolon);
     if exp.msg != void | exp.res != void: return exp;
 
     return parse_res::fail;
 }
 
-stm::parse_body(s, i, semicolon, req_colon) {
+stm::parse_body(f, s, i, semicolon, req_colon) {
     let n = skip_white(s, i);
     const loc = i + n;
 
@@ -29,21 +29,21 @@ stm::parse_body(s, i, semicolon, req_colon) {
     const _semicolon = parse_keyword(s, i + n, ";");
 
     if brace.res != void {
-        const res = stm::compound::parse(s, i + n);
+        const res = stm::compound::parse(f, s, i + n);
         if res.res == void: return res;
         else: return parse_res::val(res.res.body, res.n + n);
     }
     if colon.res != void {
         n = n + colon.n;
-        const res = stm::parse(s, i + n, semicolon);
-        if res.res == void: return parse_res::err("Expected a statement after colon", i + n, colon);
+        const res = stm::parse(f, s, i + n, semicolon);
+        if res.res == void: return parse_res::err("Expected a statement after colon", i + n, res);
         return parse_res::val(arr(res.res), n + res.n);
     }
     if _semicolon.res != void {
         return parse_res::val(arr(), n + _semicolon.n);
     }
     if not(req_colon) {
-        const res = stm::parse(s, i, semicolon);
+        const res = stm::parse(f, s, i, semicolon);
         if res.res == void: return res;
         return parse_res::val(arr(res.res), res.n);
     }
@@ -58,7 +58,7 @@ stm::var_decl(loc, mutable, name, init) {
     res.init = init;
     return res;
 }
-stm::var_decl::parse(s, i, semicolon) {
+stm::var_decl::parse(f, s, i, semicolon) {
     let n = skip_white(s, i);
     const loc = i + n;
 
@@ -89,7 +89,7 @@ stm::var_decl::parse(s, i, semicolon) {
     else {
         n = n + op.n;
 
-        const exp = exp::parse(s, i + n);
+        const exp = exp::parse(f, s, i + n);
         if exp.res == void: return parse_res::err("Expected an expression", n + i, exp);
         n = n + exp.n;
         val = exp.res;
@@ -101,15 +101,16 @@ stm::var_decl::parse(s, i, semicolon) {
         n = n + op.n;
     }
 
-    return parse_res::val(stm::var_decl(loc, mutable, name.res, val), n);
+    return parse_res::val(stm::var_decl(to_loc(s, loc, f), mutable, name.res, val), n);
 }
 
-stm::exp::parse(s, i, semicolon) {
+stm::exp::parse(f, s, i, semicolon) {
     let n = skip_white(s, i);
     const loc = i + n;
 
-    const exp = exp::parse(s, i + n);
-    if exp.res == void: return parse_res::fail;
+
+    const exp = exp::parse(f, s, i + n);
+    if exp.res == void: return exp;
     n = n + exp.n;
 
     if semicolon {
@@ -126,19 +127,19 @@ stm::compound(loc, body) {
     res.body = body;
     return res;
 }
-stm::compound::parse(s, i) {
+stm::compound::parse(f, s, i) {
     let n = skip_white(s, i);
     const loc = i + n;
     const body = arr();
 
     const open = parse_keyword(s, i + n, "{");
-    if open.res == void: return parse_res::fail;
+    if open.res == void: return open;
     n = n + open.n;
 
     const close = parse_keyword(s, i + n, "}");
     n = n + close.n;
     if close.res == void: do {
-        const stm = stm::parse(s, i + n, true);
+        const stm = stm::parse(f, s, i + n, true);
         if stm.res == void: return parse_res::err("Expected a statement", i + n, stm);
         n = n + stm.n;
         arr::append(body, stm.res);
@@ -148,18 +149,18 @@ stm::compound::parse(s, i) {
     }
     while close.res == void;
 
-    return parse_res::val(stm::compound(loc, body), n);
+    return parse_res::val(stm::compound(to_loc(s, loc, f), body), n);
 }
 
-stm::noop::parse(s, i) {
+stm::noop::parse(f, s, i) {
     let n = skip_white(s, i);
     const loc = i + n;
 
     const op = parse_keyword(s, i + n, ";");
-    if op.res == void: return parse_res::fail;
+    if op.res == void: return op;
     n = n + op.n;
 
-    return parse_res::val(noop(loc), n);
+    return parse_res::val(noop(to_loc(s, loc, f)), n);
 }
 
 stm::if(loc, cond, if_body, else_body) {
@@ -169,31 +170,31 @@ stm::if(loc, cond, if_body, else_body) {
     res.else_body = else_body;
     return res;
 }
-stm::if::parse(s, i) {
+stm::if::parse(f, s, i) {
     let n = skip_white(s, i);
     const loc = i + n;
 
     let kw = parse_keyword(s, i + n, "if");
-    if kw.res == void: return parse_res::fail;
+    if kw.res == void: return kw;
     n = n + kw.n;
 
-    const cond = exp::parse(s, i + n);
+    const cond = exp::parse(f, s, i + n);
     if cond.res == void: return parse_res::err("Expected an if condition", i + n, cond);
     n = n + cond.n;
 
-    const if_body = stm::parse_body(s, i + n, true, true);
+    const if_body = stm::parse_body(f, s, i + n, true, true);
     if if_body.res == void: return parse_res::err("Expected an if body", i + n, if_body);
     n = n + if_body.n;
 
     kw = parse_keyword(s, i + n, "else");
-    if kw.res == void: return parse_res::val(stm::if(loc, cond, if_body.res, arr()), n);
+    if kw.res == void: return parse_res::val(stm::if(to_loc(s, loc, f), cond, if_body.res, arr()), n);
     n = n + kw.n;
 
-    const else_body = stm::parse_body(s, i + n, true, false);
+    const else_body = stm::parse_body(f, s, i + n, true, false);
     if else_body.res == void: return parse_res::err("Expected an else body", i + n, else_body);
     n = n + else_body.n;
 
-    return parse_res::val(stm::if(loc, cond, if_body.res, else_body.res), n);
+    return parse_res::val(stm::if(to_loc(s, loc, f), cond, if_body.res, else_body.res), n);
 }
 
 stm::loop(loc, cond, pre_body, post_body) {
@@ -203,7 +204,7 @@ stm::loop(loc, cond, pre_body, post_body) {
     res.post_body = post_body;
     return res;
 }
-stm::loop::parse(s, i) {
+stm::loop::parse(f, s, i) {
     let n = skip_white(s, i);
     const loc = i + n;
 
@@ -216,7 +217,7 @@ stm::loop::parse(s, i) {
     if kw.res != void {
         n = n + kw.n;
 
-        do_body = stm::parse_body(s, i + n, true, false);
+        do_body = stm::parse_body(f, s, i + n, true, false);
         if do_body.res == void: return parse_res::err("Expected a do body", i + n, do_body);
         n = n + do_body.n;
     }
@@ -225,11 +226,11 @@ stm::loop::parse(s, i) {
     if kw.res != void {
         n = n + kw.n;
 
-        cond = exp::parse(s, i + n);
+        cond = exp::parse(f, s, i + n);
         if cond.res == void: return parse_res::err("Expected a while condition", i + n, cond);
         n = n + cond.n;
 
-        while_body = stm::parse_body(s, i + n, true, true);
+        while_body = stm::parse_body(f, s, i + n, true, true);
         if while_body.res == void: return parse_res::err("Expected a while body", i + n, while_body);
         n = n + while_body.n;
     }
@@ -240,7 +241,7 @@ stm::loop::parse(s, i) {
     if while_body == void: while_body = parse_res::val(arr(), 0);
     if cond == void: cond = parse_res::val(void, 0);
 
-    return parse_res::val(stm::loop(loc, cond.res, do_body.res, while_body.res), n);
+    return parse_res::val(stm::loop(to_loc(s, loc, f), cond.res, do_body.res, while_body.res), n);
 }
 
 stm::return(loc, val) {
@@ -248,15 +249,15 @@ stm::return(loc, val) {
     res.val = val;
     return res;
 }
-stm::return::parse(s, i, semicolon) {
+stm::return::parse(f, s, i, semicolon) {
     let n = skip_white(s, i);
     const loc = i + n;
 
     const kw = parse_keyword(s, i + n, "return");
-    if kw.res == void: return parse_res::fail;
+    if kw.res == void: return kw;
     n = n + kw.n;
 
-    const val = exp::parse(s, i + n);
+    const val = exp::parse(f, s, i + n);
     if val.msg != void: return val;
     n = n + val.n;
 
@@ -266,6 +267,6 @@ stm::return::parse(s, i, semicolon) {
         n = n + op.n;
     }
 
-    return parse_res::val(stm::return(loc, val.res), n);
+    return parse_res::val(stm::return(to_loc(s, loc, f), val.res), n);
 }
 
