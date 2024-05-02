@@ -28,22 +28,22 @@ def::func::parse(s, i) {
     if name.res == void: return name;
     n = n + name.n;
 
-    const open = parse_keyword(s, i + n, "(");
+    const open = parse_operator(s, i + n, "(");
     if open.res == void: return open;
     n = n + open.n;
 
     const params = arr();
 
-    const close = parse_keyword(s, i + n, ")");
+    const close = parse_operator(s, i + n, ")");
     if close.res == void: do {
         const param = parse_identifier(s, i + n);
         if param.res == void: return parse_res::err("Expected a parameter name", i + n, param);
         n = n + param.n;
         arr::append(params, param.res);
 
-        const delim = parse_keyword(s, i + n, ",");
+        const delim = parse_operator(s, i + n, ",");
         n = n + delim.n;
-        const close = parse_keyword(s, i + n, ")");
+        const close = parse_operator(s, i + n, ")");
         n = n + close.n;
 
         if delim.res == void & close.res == void: return parse_res::err("Expected a comma or a closing paren", i + n);
@@ -81,7 +81,7 @@ def::noop::parse(s, i) {
     let n = skip_white(s, i);
     const loc = i + n;
 
-    const op = parse_keyword(s, i + n, ";");
+    const op = parse_operator(s, i + n, ";");
     if op.res == void: return op;
     n = n + op.n;
 

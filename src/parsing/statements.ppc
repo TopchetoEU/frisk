@@ -24,9 +24,9 @@ stm::parse_body(s, i, semicolon, req_colon) {
     let n = skip_white(s, i);
     const loc = i + n;
 
-    const brace = parse_keyword(s, i + n, "{");
-    const colon = parse_keyword(s, i + n, ":");
-    const _semicolon = parse_keyword(s, i + n, ";");
+    const brace = parse_operator(s, i + n, "{");
+    const colon = parse_operator(s, i + n, ":");
+    const _semicolon = parse_operator(s, i + n, ";");
 
     if brace.res != void {
         const res = stm::compound::parse(s, i + n);
@@ -82,7 +82,7 @@ stm::var_decl::parse(s, i, semicolon) {
 
     let val;
 
-    const op = parse_keyword(s, i + n, "=");
+    const op = parse_operator(s, i + n, "=");
     if op.res == void {
         if not(mutable): return parse_res::err("Expected an initializer for constant", i + n, name);
     }
@@ -96,7 +96,7 @@ stm::var_decl::parse(s, i, semicolon) {
     }
 
     if semicolon {
-        const op = parse_keyword(s, i + n, ";");
+        const op = parse_operator(s, i + n, ";");
         if op.res == void: return parse_res::err("Expected a semicolon", n + i, op);
         n = n + op.n;
     }
@@ -114,7 +114,7 @@ stm::exp::parse(s, i, semicolon) {
     n = n + exp.n;
 
     if semicolon {
-        const op = parse_keyword(s, i + n, ";");
+        const op = parse_operator(s, i + n, ";");
         if op.res == void: return parse_res::err("Expected a semicolon", n + i, op);
         n = n + op.n;
     }
@@ -132,11 +132,11 @@ stm::compound::parse(s, i) {
     const loc = i + n;
     const body = arr();
 
-    const open = parse_keyword(s, i + n, "{");
+    const open = parse_operator(s, i + n, "{");
     if open.res == void: return open;
     n = n + open.n;
 
-    const close = parse_keyword(s, i + n, "}");
+    const close = parse_operator(s, i + n, "}");
     n = n + close.n;
     if close.res == void: do {
         const stm = stm::parse(s, i + n, true);
@@ -144,7 +144,7 @@ stm::compound::parse(s, i) {
         n = n + stm.n;
         arr::append(body, stm.res);
 
-        const close = parse_keyword(s, i + n, "}");
+        const close = parse_operator(s, i + n, "}");
         n = n + close.n;
     }
     while close.res == void;
@@ -156,7 +156,7 @@ stm::noop::parse(s, i) {
     let n = skip_white(s, i);
     const loc = i + n;
 
-    const op = parse_keyword(s, i + n, ";");
+    const op = parse_operator(s, i + n, ";");
     if op.res == void: return op;
     n = n + op.n;
 
@@ -262,7 +262,7 @@ stm::return::parse(s, i, semicolon) {
     n = n + val.n;
 
     if semicolon {
-        const op = parse_keyword(s, i + n, ";");
+        const op = parse_operator(s, i + n, ";");
         if op.res == void: return parse_res::err("Expected a semicolon", n + i, op);
         n = n + op.n;
     }

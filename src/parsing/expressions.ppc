@@ -256,11 +256,11 @@ exp::call::parse(s, i, prec, prev) {
 
     const args = arr();
 
-    const open = parse_keyword(s, i + n, "(");
+    const open = parse_operator(s, i + n, "(");
     if open.res == void: return open;
     n = n + open.n;
 
-    const close = parse_keyword(s, i + n, ")");
+    const close = parse_operator(s, i + n, ")");
     n = n + close.n;
     if close.res == void: do {
         const arg = exp::parse(s, i + n);
@@ -268,9 +268,9 @@ exp::call::parse(s, i, prec, prev) {
         n = n + arg.n;
         arr::append(args, arg.res);
 
-        const delim = parse_keyword(s, i + n, ",");
+        const delim = parse_operator(s, i + n, ",");
         n = n + delim.n;
-        const close = parse_keyword(s, i + n, ")");
+        const close = parse_operator(s, i + n, ")");
         n = n + close.n;
 
         if delim.res == void & close.res == void: return parse_res::err("Expected a comma or a closing paren", i + n);
@@ -298,7 +298,7 @@ exp::member::parse(s, i, prec, prev) {
         prev = res.res;
     }
 
-    const dot = parse_keyword(s, i + n, ".");
+    const dot = parse_operator(s, i + n, ".");
     if dot.res == void: return dot;
     n = n + dot.n;
 
@@ -314,7 +314,7 @@ exp::parens::parse(s, i, prec, prev) {
     let n = skip_white(s, i);
     const loc = i + n;
 
-    const open = parse_keyword(s, i + n, "(");
+    const open = parse_operator(s, i + n, "(");
     if open.res == void: return open;
     n = n + open.n;
 
@@ -322,7 +322,7 @@ exp::parens::parse(s, i, prec, prev) {
     if exp.res == void: return parse_res::err("Expected an expression", n + i, exp);
     n = n + exp.n;
 
-    const close = parse_keyword(s, i + n, ")");
+    const close = parse_operator(s, i + n, ")");
     if close.res == void: return parse_res::err("Expected closing parens", n + i, close);
     n = n + close.n;
 
@@ -343,7 +343,7 @@ exp::assign::parse(s, i, prec, prev, op) {
     let n = skip_white(s, i);
     const loc = i + n;
 
-    const op_res = parse_keyword(s, i + n, op + "=");
+    const op_res = parse_operator(s, i + n, op + "=");
     if op_res.res == void: return op_res;
     n = n + op_res.n;
 
@@ -369,7 +369,7 @@ exp::bin_op::parse(s, i, prec, prev, op, prec_op) {
     let n = skip_white(s, i);
     const loc = i + n;
 
-    const op_res = parse_keyword(s, i + n, op);
+    const op_res = parse_operator(s, i + n, op);
     if op_res.res == void: return op_res;
     n = n + op_res.n;
 
@@ -393,7 +393,7 @@ exp::pre_op::parse(s, i, prec, prev, op, prec_op) {
     let n = skip_white(s, i);
     const loc = i + n;
 
-    const op_res = parse_keyword(s, i + n, op);
+    const op_res = parse_operator(s, i + n, op);
     if op_res.res == void: return op_res;
     n = n + op_res.n;
 
@@ -417,7 +417,7 @@ exp::post_op::parse(s, i, prec, prev, op, prec_op) {
     let n = skip_white(s, i);
     const loc = i + n;
 
-    const op_res = parse_keyword(s, i + n, op);
+    const op_res = parse_operator(s, i + n, op);
     if op_res.res == void: return op_res;
     n = n + op_res.n;
 
@@ -436,21 +436,21 @@ exp::int::parse(s, i, prec, prev) {
     let n = skip_white(s, i);
     const loc = n + i;
 
-    if parse_keyword(s, i, "0x").n > 0 {
+    if parse_operator(s, i, "0x").n > 0 {
         n = n + 2;
 
         const res = exp::parse_hex(s, i + n);
         if res.res == void: return parse_res::err("Expected hex number after '0x'", i + n, res);
         else: return parse_res::val(exp::int(source::to_loc(s, loc), res.res), n + res.n);
     }
-    else if parse_keyword(s, i, "0b").n > 0 {
+    else if parse_operator(s, i, "0b").n > 0 {
         n = n + 2;
 
         const res = exp::parse_bin(s, i + n);
         if res.res == void: return parse_res::err("Expected binary number after '0b'", i + n, res);
         else: return parse_res::val(exp::int(source::to_loc(s, loc), res.res), n + res.n);
     }
-    else if parse_keyword(s, i, "0").n > 0 {
+    else if parse_operator(s, i, "0").n > 0 {
         const res = exp::parse_oct(s, i + n);
         if res.res == void: return parse_res::err("Expected binary number after '0b'", i + n + 1, res);
         else: return parse_res::val(exp::int(source::to_loc(s, loc), res.res), n + res.n);
@@ -467,7 +467,7 @@ exp::char::parse(s, i, prec, prev) {
     let n = skip_white(s, i);
     const loc = n + i;
 
-    const open = parse_keyword(s, i + n, "'");
+    const open = parse_operator(s, i + n, "'");
     if open.res == void: return open;
     n = n + open.n;
 
@@ -504,7 +504,7 @@ exp::string::parse(s, i, prec, prev) {
     let n = skip_white(s, i);
     const loc = n + i;
 
-    const open = parse_keyword(s, i + n, "\"");
+    const open = parse_operator(s, i + n, "\"");
     if open.res == void: return open;
     n = n + open.n;
 

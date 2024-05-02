@@ -12,33 +12,38 @@ skip_white(s, i) {
 parse_keyword(s, i, kw) {
     let n = skip_white(s, i);
     let j = 0;
+    let res = "";
+
+    do: const c = source::at(s, i + n);
+    while char::is_upper(c) | char::is_lower(c) | char::is_num(c) | c == '_' {
+        res = res + char::to_string(c);
+        n = n + 1;
+    }
+
+    if str::len(res) == 0: return parse_res::fail;
+
+    if kw != void & res != kw: return parse_res::fail;
+    else: return parse_res::val(res, n);
 
     if kw == void {
-        let res = "";
-
-        do: const c = source::at(s, i + n);
-        while char::is_upper(c) | char::is_lower(c) | char::is_num(c) | c == '_' {
-            res = res + char::to_string(c);
-            n = n + 1;
-        }
-
-        if str::len(res) == 0: return parse_res::fail;
-
-        return parse_res::val(res, n);
     }
-    else {
-        while j < str::len(kw) {
-            const a = source::at(s, i + n);
-            const b = str::at(kw, j);
+}
 
-            if a != b: return parse_res::fail;
+parse_operator(s, i, op) {
+    let n = skip_white(s, i);
+    let j = 0;
 
-            n = n + 1;
-            j = j + 1;
-        }
+    while j < str::len(op) {
+        const a = source::at(s, i + n);
+        const b = str::at(op, j);
 
-        return parse_res::val(kw, n);
+        if a != b: return parse_res::fail;
+
+        n = n + 1;
+        j = j + 1;
     }
+
+    return parse_res::val(op, n);
 }
 
 parse_identifier(s, i) {
@@ -51,7 +56,7 @@ parse_identifier(s, i) {
 
     let res = first.res;
 
-    do: const colons = parse_keyword(s, i + n, "::");
+    do: const colons = parse_operator(s, i + n, "::");
     while (colons.res != void) {
         n = n + colons.n;
         res = res + "::";
