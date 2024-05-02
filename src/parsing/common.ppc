@@ -1,8 +1,29 @@
 skip_white(s, i) {
     let n = 0;
+    let comment_state = void;
 
-    do: const c = source::at(s, i + n);
-    while c != void & (c == ' ' | c == '\n' | c == '\t') {
+    do const c = source::at(s, i + n);
+    while c != void {
+        if comment_state == "one_slash" {
+            if c == '/': comment_state = "single";
+            else if c == '*': comment_state = "multil";
+            else comment_state = void;
+        }
+        else if comment_state == "single" {
+            if c == '\n': comment_state = "end";
+        }
+        else if comment_state == "multi" {
+            if c == '*': comment_state = "multi_first";
+        }
+        else if comment_state == "multi_first" {
+            if c == '/': comment_state = "end";
+            else if c != '*': comment_state = "multi";
+        }
+        else if c == '/': comment_state = "one_slash";
+
+        if comment_state == void & c != ' ' & c != '\n' & c != '\t': return n;
+        if comment_state == "end": comment_state = void;
+
         n = n + 1;
     }
 
