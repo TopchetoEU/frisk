@@ -1,0 +1,29 @@
+def::transform(element) {
+    const func = def::func::transform(element);
+    if func != void: return func;
+
+    const entry = def::entry::transform(element);
+    if entry != void: return entry;
+
+    return void;
+}
+
+def::func::transform(element) {
+    if element.type != "def::func": return void;
+
+    let res = "function $$" + transform_identifier(element.name) + "(";
+
+    let i = 0;
+    while i < arr::len(element.params) {
+        res = res + "$$" + transform_identifier(arr::at(element.params, i)) + ",";
+        i = i + 1;
+    }
+
+    return res + "){" + transform_body(element.body) + "}";
+}
+
+def::entry::transform(element) {
+    if element.type != "def::entry": return void;
+
+    return "{" + transform_body(element.body) + "}";
+}

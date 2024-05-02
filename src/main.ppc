@@ -24,7 +24,7 @@ main(args) {
     }
     else {
         while i < arr::len(defs) {
-            print(arr::at(defs, i));
+            print(transform(arr::at(defs, i)));
             i = i + 1;
         }
     }

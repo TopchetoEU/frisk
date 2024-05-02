@@ -224,7 +224,14 @@ export class StringLiteralNode implements Node {
     }
 
     public toJS() {
-        return `('${[ ...this.data ].map(v => '\\x' + v.toString(16)).join('')}')`;
+        return `('${[ ...this.data ]
+            .map(v => v.toString(16))
+            .map(v => {
+                while (v.length < 4) v = '0' + v;
+                return v;
+            })
+            .map(v => '\\u' + v)
+            .join('')}')`;
     }
 }
 export class IntLiteralNode implements Node {

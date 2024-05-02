@@ -194,11 +194,6 @@ exp::parse_char(s, i) {
     else: return parse_res::val(c, 1);
 }
 
-raw(loc, raw) {
-    const res = node("raw", loc);
-    res.data = raw;
-    return res;
-}
 raw::parse(s, i, prec, prev) {
     if prev != void: return parse_res::fail;
     let n = skip_white(s, i);
@@ -311,7 +306,7 @@ exp::member::parse(s, i, prec, prev) {
     if name.res == void: return parse_res::err("Expected a member name", i + n, name);
     n = n + name.n;
 
-    return parse_res::val(exp::member(source::to_loc(s, loc), prev, name), n);
+    return parse_res::val(exp::member(source::to_loc(s, loc), prev, name.res), n);
 }
 
 exp::parens::parse(s, i, prec, prev) {

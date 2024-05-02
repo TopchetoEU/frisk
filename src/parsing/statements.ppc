@@ -187,14 +187,14 @@ stm::if::parse(s, i) {
     n = n + if_body.n;
 
     kw = parse_keyword(s, i + n, "else");
-    if kw.res == void: return parse_res::val(stm::if(source::to_loc(s, loc), cond, if_body.res, arr()), n);
+    if kw.res == void: return parse_res::val(stm::if(source::to_loc(s, loc), cond.res, if_body.res, arr()), n);
     n = n + kw.n;
 
     const else_body = stm::parse_body(s, i + n, true, false);
     if else_body.res == void: return parse_res::err("Expected an else body", i + n, else_body);
     n = n + else_body.n;
 
-    return parse_res::val(stm::if(source::to_loc(s, loc), cond, if_body.res, else_body.res), n);
+    return parse_res::val(stm::if(source::to_loc(s, loc), cond.res, if_body.res, else_body.res), n);
 }
 
 stm::loop(loc, cond, pre_body, post_body) {

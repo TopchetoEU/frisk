@@ -85,4 +85,11 @@ node(type, loc) {
     res.loc = loc;
     return res;
 }
+
 noop(loc): return node("noop", loc);
+
+raw(loc, raw) {
+    const res = node("raw", loc);
+    res.data = raw;
+    return res;
+}

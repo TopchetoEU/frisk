@@ -74,7 +74,7 @@ def::entry::parse(s, i) {
     if body.res == void: return parse_res::err("Expected an entry body", i + n, body);
     n = n + body.n;
 
-    return parse_res::val(def::entry(source::to_loc(s, loc), body), n);
+    return parse_res::val(def::entry(source::to_loc(s, loc), body.res), n);
 }
 
 def::noop::parse(s, i) {

@@ -1,0 +1,54 @@
+noop::transform(element) {
+    if element.type != "noop": return void;
+    return "";
+}
+
+raw::transform(element) {
+    if element.type != "raw": return void;
+    return element.data;
+}
+
+transform_body(arr) {
+    let res = "";
+
+    let i = 0;
+    while i < arr::len(arr) {
+        res = res + transform(arr::at(arr, i)) + ";";
+        i = i + 1;
+    }
+
+    return res;
+}
+
+transform(element) {
+    const def = def::transform(element);
+    if def != void: return def;
+
+    const stm = stm::transform(element);
+    if stm != void: return stm;
+
+    const exp = exp::transform(element);
+    if exp != void: return exp;
+
+    const noop = noop::transform(element);
+    if noop != void: return noop;
+
+    const raw = raw::transform(element);
+    if raw != void: return raw;
+
+    return void;
+}
+
+transform_identifier(id) {
+    let res = "";
+
+    let i = 0;
+    while i < str::len(id) {
+        const c = str::at(id, i);
+        if c == ':': res = res + "$";
+        else: res = res + char::to_string(c);
+        i = i + 1;
+    }
+
+    return res;
+}
