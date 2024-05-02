@@ -21,6 +21,8 @@ main(args) {
             print(arr::at(errs, i));
             i = i + 1;
         }
+
+        return 1;
     }
     else {
         while i < arr::len(defs) {
@@ -30,7 +32,7 @@ main(args) {
     }
 }
 
-entry {
-    asm::js "BigInt.prototype.toJSON = function() { return Number(this).toString(); }";
-    main(asm::js "Deno.args");
-}
+entry asm::js "
+    BigInt.prototype.toJSON = function() { return Number(this).toString(); };
+    process.exit(Number($$main(process.argv.slice(2)) ?? 0));
+";
