@@ -1,0 +1,27 @@
+#!/bin/node
+
+const { readdirSync, writeFileSync, readFileSync } = require('fs');
+const { spawnSync, execSync } = require("child_process");
+
+const i = (readdirSync("bin")
+    .filter(v => v.includes(".js"))
+    .map(v => v.split('.')[0].substring(1))
+    .map(Number)
+    .sort((a, b) => b - a)[0]) ?? -1;
+
+const srcs = [
+    ...execSync("find src -name *.ppcl").toString().split('\n'),
+    ...execSync("find src -name '*.ppc'").toString().split('\n'),
+].filter(v => v !== '');
+
+let res = spawnSync("bin/ppc", srcs);
+if (res.error) throw res.error;
+if (res.status !== 0) {
+    process.stdout.write(res.stdout);
+    process.stderr.write(res.stderr);
+    process.exit(res.status);
+}
+res = res.stdout.toString();
+
+writeFileSync(`bin/v${i + 1}.js`, readFileSync(`bin/ppc`));
+writeFileSync("bin/ppc", `#!/bin/node\n${res}`);

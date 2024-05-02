@@ -1,0 +1,17 @@
+#!/bin/node
+
+const { readdirSync, writeFileSync, readFileSync, rmSync } = require('fs');
+
+const i = (readdirSync("bin")
+    .filter(v => v.includes(".js"))
+    .map(v => v.split('.')[0].substring(1))
+    .map(Number)
+    .sort((a, b) => b - a)[0]) ?? -1;
+
+if (i < 0) {
+    console.log("You really don't want to do this");
+    return;
+}
+
+writeFileSync("bin/ppc", readFileSync(`bin/v${i}.js`));
+rmSync(`bin/v${i}.js`);
