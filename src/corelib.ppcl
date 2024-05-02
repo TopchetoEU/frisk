@@ -19,6 +19,10 @@ arr(): asm::js "return Array.apply(undefined, arguments)";
 arr::at(arr, i): asm::js "return $$arr[Number($$i)]";
 arr::len(arr): asm::js "return BigInt($$arr.length)";
 arr::append(arr, el): asm::js "return $$arr.push($$el)";
+arr::append_all(arr1, arr2): asm::js "
+    $$arr1.push(...$$arr2);
+    return $$arr1;
+";
 
 str::at(str, i): asm::js "
     const res = $$str[Number($$i)];
@@ -35,3 +39,4 @@ char::is_hex(char): return char::is_num(char) | (char >= 'A' & char <= 'F') | (c
 char::to_string(char): return asm::js "String.fromCharCode(Number($$char))";
 
 std::read_all(file): asm::js "return new TextDecoder().decode(Deno.readFileSync($$file))";
+std::time_us(): asm::js "return performance.now()";

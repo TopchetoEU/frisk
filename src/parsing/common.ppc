@@ -1,7 +1,7 @@
 skip_white(s, i) {
     let n = 0;
 
-    do: const c = str::at(s, i + n);
+    do: const c = source::at(s, i + n);
     while c != void & (c == ' ' | c == '\n' | c == '\t') {
         n = n + 1;
     }
@@ -16,7 +16,7 @@ parse_keyword(s, i, kw) {
     if kw == void {
         let res = "";
 
-        do: const c = str::at(s, i + n);
+        do: const c = source::at(s, i + n);
         while char::is_upper(c) | char::is_lower(c) | char::is_num(c) | c == '_' {
             res = res + char::to_string(c);
             n = n + 1;
@@ -28,7 +28,7 @@ parse_keyword(s, i, kw) {
     }
     else {
         while j < str::len(kw) {
-            const a = str::at(s, i + n);
+            const a = source::at(s, i + n);
             const b = str::at(kw, j);
 
             if a != b: return parse_res::fail;

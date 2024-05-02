@@ -1,0 +1,35 @@
+source(f, s) {
+    const res = object();
+    res.filename = f;
+    res.source = s;
+    res.line_starts = arr();
+    arr::append(res.line_starts, 0);
+
+    let i = 0;
+    while i < str::len(s) {
+        if str::at(s, i) == '\n': arr::append(res.line_starts, i + 1);
+        i = i + 1;
+    }
+
+    return res;
+}
+
+source::to_loc(s, i) {
+    let j = 0;
+
+    do: const nl_i = arr::at(s.line_starts, j);
+    while nl_i != void & i >= nl_i {
+        j = j + 1;
+    }
+
+    j = j - 1;
+
+    const row = j + 1;
+    const col = i - arr::at(s.line_starts, j) + 1;
+
+
+    return s.filename + ":" + row + ":" + col;
+}
+source::at(s, i) {
+    return str::at(s.source, i);
+}

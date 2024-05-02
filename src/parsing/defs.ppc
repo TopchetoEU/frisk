@@ -1,13 +1,13 @@
-def::parse(f, s, i, semicolon) {
+def::parse(s, i, semicolon) {
     let op;
 
-    const entry = def::entry::parse(f, s, i, semicolon);
+    const entry = def::entry::parse(s, i, semicolon);
     if entry.msg != void | entry.res != void: return entry;
-    const noop = def::noop::parse(f, s, i, semicolon);
+    const noop = def::noop::parse(s, i, semicolon);
     if noop.msg != void | noop.res != void: return noop;
-    const var_decl = stm::var_decl::parse(f, s, i, semicolon);
+    const var_decl = stm::var_decl::parse(s, i, semicolon);
     if var_decl.msg != void | var_decl.res != void: return var_decl;
-    const func = def::func::parse(f, s, i, semicolon);
+    const func = def::func::parse(s, i, semicolon);
     if func.msg != void | func.res != void: return func;
 
     return parse_res::fail;
@@ -20,7 +20,7 @@ def::func(loc, name, params, body) {
     res.body = body;
     return res;
 }
-def::func::parse(f, s, i) {
+def::func::parse(s, i) {
     let n = skip_white(s, i);
     const loc = i + n;
 
@@ -50,11 +50,11 @@ def::func::parse(f, s, i) {
     } while(close.res == void);
     else: n = n + close.n;
 
-    const body = stm::parse_body(f, s, i + n, true, true);
+    const body = stm::parse_body(s, i + n, true, true);
     if body.res == void: return parse_res::err("Expected a function body", i + n, body);
     n = n + body.n;
 
-    return parse_res::val(def::func(to_loc(s, loc, f), name.res, params, body.res), n);
+    return parse_res::val(def::func(source::to_loc(s, loc), name.res, params, body.res), n);
 }
 
 def::entry(loc, body) {
@@ -62,7 +62,7 @@ def::entry(loc, body) {
     res.body = body;
     return res;
 }
-def::entry::parse(f, s, i) {
+def::entry::parse(s, i) {
     let n = skip_white(s, i);
     const loc = i + n;
 
@@ -70,14 +70,14 @@ def::entry::parse(f, s, i) {
     if kw.res == void: return kw;
     n = n + kw.n;
 
-    const body = stm::parse_body(f, s, i + n, true, false);
+    const body = stm::parse_body(s, i + n, true, false);
     if body.res == void: return parse_res::err("Expected an entry body", i + n, body);
     n = n + body.n;
 
-    return parse_res::val(def::entry(to_loc(s, loc, f), body), n);
+    return parse_res::val(def::entry(source::to_loc(s, loc), body), n);
 }
 
-def::noop::parse(f, s, i) {
+def::noop::parse(s, i) {
     let n = skip_white(s, i);
     const loc = i + n;
 
@@ -85,16 +85,16 @@ def::noop::parse(f, s, i) {
     if op.res == void: return op;
     n = n + op.n;
 
-    return parse_res::val(noop(to_loc(s, loc, f)), n);
+    return parse_res::val(noop(source::to_loc(s, loc)), n);
 }
 
-def::parse_file(f, s) {
+def::parse_file(s) {
     let n = 0;
     const res = arr();
 
     do: n = n + skip_white(s, n);
-    while n < str::len(s) {
-        const def = def::parse(f, s, n, true);
+    while n < str::len(s.source) {
+        const def = def::parse(s, n, true);
         if def.res == void: return parse_res::err("Expected a definition", n, def);
         n = n + def.n;
         arr::append(res, def.res);

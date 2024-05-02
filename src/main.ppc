@@ -1,16 +1,32 @@
 main(args) {
     let i = 0;
     const defs = arr();
+    const errs = arr();
 
     while i < arr::len(args) {
         const f = arr::at(args, i);
-        const s = std::read_all(f);
+        const s = source(f, std::read_all(f));
 
-        const res = def::parse_file(f, s);
-        if res.msg != void: print(to_loc(s, res.loc, f) + ": " + res.msg);
-        if res.res != void: print(asm::js "JSON.stringify($$res.res)");
+        const res = def::parse_file(s);
+        if res.msg != void: arr::append(errs, source::to_loc(s, res.loc) + ": " + res.msg);
+        if res.res != void: arr::append_all(defs, res.res);
 
-        i =  i + 1;
+        i = i + 1;
+    }
+
+    i = 0;
+
+    if arr::len(errs) > 0 {
+        while i < arr::len(errs) {
+            print(arr::at(errs, i));
+            i = i + 1;
+        }
+    }
+    else {
+        while i < arr::len(defs) {
+            print(arr::at(defs, i));
+            i = i + 1;
+        }
     }
 }
 

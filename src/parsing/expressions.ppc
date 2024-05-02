@@ -1,76 +1,76 @@
-exp::parse_one(f, s, i, prec, prev) {
+exp::parse_one(s, i, prec, prev) {
     let op;
 
-    const asm = raw::parse(f, s, i, prec, prev);
+    const asm = raw::parse(s, i, prec, prev);
     if asm.msg != void | asm.res != void: return asm;
-    const str = exp::string::parse(f, s, i, prec, prev);
+    const str = exp::string::parse(s, i, prec, prev);
     if str.msg != void | str.res != void: return str;
-    const char = exp::char::parse(f, s, i, prec, prev);
+    const char = exp::char::parse(s, i, prec, prev);
     if char.msg != void | char.res != void: return char;
-    const int = exp::int::parse(f, s, i, prec, prev);
+    const int = exp::int::parse(s, i, prec, prev);
     if int.msg != void | int.res != void: return int;
 
-    op = exp::pre_op::parse(f, s, i, prec, prev, "+", 30);
+    op = exp::pre_op::parse(s, i, prec, prev, "+", 30);
     if op.msg != void | op.res != void: return op;
-    op = exp::pre_op::parse(f, s, i, prec, prev, "-", 30);
+    op = exp::pre_op::parse(s, i, prec, prev, "-", 30);
     if op.msg != void | op.res != void: return op;
 
-    const parens = exp::parens::parse(f, s, i, prec, prev);
+    const parens = exp::parens::parse(s, i, prec, prev);
     if parens.msg != void | parens.res != void: return parens;
 
-    const var = exp::var::parse(f, s, i, prec, prev);
+    const var = exp::var::parse(s, i, prec, prev);
     if var.msg != void | var.res != void: return var;
 
-    const call = exp::call::parse(f, s, i, prec, prev);
+    const call = exp::call::parse(s, i, prec, prev);
     if call.msg != void | call.res != void: return call;
-    const member = exp::member::parse(f, s, i, prec, prev);
+    const member = exp::member::parse(s, i, prec, prev);
     if member.msg != void | member.res != void: return member;
 
-    op = exp::bin_op::parse(f, s, i, prec, prev, "+", 10);
+    op = exp::bin_op::parse(s, i, prec, prev, "+", 10);
     if op.msg != void | op.res != void: return op;
-    op = exp::bin_op::parse(f, s, i, prec, prev, "-", 10);
-    if op.msg != void | op.res != void: return op;
-
-    op = exp::bin_op::parse(f, s, i, prec, prev, "*", 11);
-    if op.msg != void | op.res != void: return op;
-    op = exp::bin_op::parse(f, s, i, prec, prev, "/", 11);
-    if op.msg != void | op.res != void: return op;
-    op = exp::bin_op::parse(f, s, i, prec, prev, "%", 11);
+    op = exp::bin_op::parse(s, i, prec, prev, "-", 10);
     if op.msg != void | op.res != void: return op;
 
-    op = exp::bin_op::parse(f, s, i, prec, prev, "<=", 5);
+    op = exp::bin_op::parse(s, i, prec, prev, "*", 11);
     if op.msg != void | op.res != void: return op;
-    op = exp::bin_op::parse(f, s, i, prec, prev, ">=", 5);
+    op = exp::bin_op::parse(s, i, prec, prev, "/", 11);
     if op.msg != void | op.res != void: return op;
-    op = exp::bin_op::parse(f, s, i, prec, prev, "<", 5);
-    if op.msg != void | op.res != void: return op;
-    op = exp::bin_op::parse(f, s, i, prec, prev, ">", 5);
+    op = exp::bin_op::parse(s, i, prec, prev, "%", 11);
     if op.msg != void | op.res != void: return op;
 
-    op = exp::bin_op::parse(f, s, i, prec, prev, "==", 4);
+    op = exp::bin_op::parse(s, i, prec, prev, "<=", 5);
     if op.msg != void | op.res != void: return op;
-    op = exp::bin_op::parse(f, s, i, prec, prev, "!=", 4);
+    op = exp::bin_op::parse(s, i, prec, prev, ">=", 5);
+    if op.msg != void | op.res != void: return op;
+    op = exp::bin_op::parse(s, i, prec, prev, "<", 5);
+    if op.msg != void | op.res != void: return op;
+    op = exp::bin_op::parse(s, i, prec, prev, ">", 5);
     if op.msg != void | op.res != void: return op;
 
-    op = exp::bin_op::parse(f, s, i, prec, prev, "&", 3);
+    op = exp::bin_op::parse(s, i, prec, prev, "==", 4);
     if op.msg != void | op.res != void: return op;
-    op = exp::bin_op::parse(f, s, i, prec, prev, "|", 2);
+    op = exp::bin_op::parse(s, i, prec, prev, "!=", 4);
+    if op.msg != void | op.res != void: return op;
+
+    op = exp::bin_op::parse(s, i, prec, prev, "&", 3);
+    if op.msg != void | op.res != void: return op;
+    op = exp::bin_op::parse(s, i, prec, prev, "|", 2);
     if op.msg != void | op.res != void: return op;
 
     let assign;
 
-    assign = exp::assign::parse(f, s, i, prec, prev, "");
+    assign = exp::assign::parse(s, i, prec, prev, "");
     if assign.msg != void | assign.res != void: return assign;
 
     return parse_res::fail;
 }
 
-exp::parse(f, s, i, prec, _prev) {
+exp::parse(s, i, prec, _prev) {
     let n = 0;
     let prev = _prev;
 
     do {
-        const res = exp::parse_one(f, s, i + n, prec, prev);
+        const res = exp::parse_one(s, i + n, prec, prev);
         if res.msg != void: return res;
         else if res.res == void: return parse_res::val(prev, n);
 
@@ -84,7 +84,7 @@ exp::parse_hex(s, i, max) {
     let res = 0;
 
     do {
-        const c = str::at(s, i + n);
+        const c = source::at(s, i + n);
 
         let digit = void;
 
@@ -105,7 +105,7 @@ exp::parse_oct(s, i, max) {
     let res = 0;
 
     do {
-        const c = str::at(s, i + n);
+        const c = source::at(s, i + n);
 
         let digit = void;
 
@@ -125,7 +125,7 @@ exp::parse_bin(s, i, max) {
     let res = 0;
 
     do {
-        const c = str::at(s, i + n);
+        const c = source::at(s, i + n);
 
         let digit = void;
 
@@ -145,7 +145,7 @@ exp::parse_dec(s, i, max) {
     let res = 0;
 
     do {
-        const c = str::at(s, i + n);
+        const c = source::at(s, i + n);
 
         let digit = void;
 
@@ -159,13 +159,12 @@ exp::parse_dec(s, i, max) {
     if n == 0: return parse_res::fail;
     else: return parse_res::val(res, n);
 }
-
 exp::parse_char(s, i) {
-    let c = str::at(s, i);
+    let c = source::at(s, i);
 
     if c == '\\' {
         let n = 1;
-        c = str::at(s, i + n);
+        c = source::at(s, i + n);
 
         if c == 't': return parse_res::val('\t', 2);
         if c == 'n': return parse_res::val('\n', 2);
@@ -200,7 +199,7 @@ raw(loc, raw) {
     res.data = raw;
     return res;
 }
-raw::parse(f, s, i, prec, prev) {
+raw::parse(s, i, prec, prev) {
     if prev != void: return parse_res::fail;
     let n = skip_white(s, i);
     const loc = i + n;
@@ -210,7 +209,7 @@ raw::parse(f, s, i, prec, prev) {
     if name.res != "asm::js": return parse_res::fail;
     n = n + name.n;
 
-    const str = exp::string::parse(f, s, i + n);
+    const str = exp::string::parse(s, i + n);
     if str.res == void: return str;
     n = n + str.n;
 
@@ -222,7 +221,7 @@ raw::parse(f, s, i, prec, prev) {
         j = j + 1;
     }
 
-    return parse_res::val(raw(to_loc(s, loc, f), res), n);
+    return parse_res::val(raw(source::to_loc(s, loc), res), n);
 }
 
 exp::var(loc, name) {
@@ -230,7 +229,7 @@ exp::var(loc, name) {
     res.name = name;
     return res;
 }
-exp::var::parse(f, s, i, prec, prev) {
+exp::var::parse(s, i, prec, prev) {
     if prev != void: return parse_res::fail;
     let n = skip_white(s, i);
     const loc = i + n;
@@ -239,7 +238,7 @@ exp::var::parse(f, s, i, prec, prev) {
     if name.res == void: return name;
     n = n + name.n;
 
-    return parse_res::val(exp::var(to_loc(s, loc, f), name.res), n);
+    return parse_res::val(exp::var(source::to_loc(s, loc), name.res), n);
 }
 
 exp::call(loc, obj, args) {
@@ -248,13 +247,13 @@ exp::call(loc, obj, args) {
     res.args = args;
     return res;
 }
-exp::call::parse(f, s, i, prec, prev) {
+exp::call::parse(s, i, prec, prev) {
     if prec > 39: return parse_res::fail;
     let n = skip_white(s, i);
     const loc = i + n;
 
     if prev == void {
-        const res = exp::parse(f, s, i + n, 40);
+        const res = exp::parse(s, i + n, 40);
         if res.res == void: return res;
         n = n + res.n;
         prev = res.res;
@@ -269,7 +268,7 @@ exp::call::parse(f, s, i, prec, prev) {
     const close = parse_keyword(s, i + n, ")");
     n = n + close.n;
     if close.res == void: do {
-        const arg = exp::parse(f, s, i + n);
+        const arg = exp::parse(s, i + n);
         if arg.res == void: return parse_res::err("Expected an argument", i + n, arg);
         n = n + arg.n;
         arr::append(args, arg.res);
@@ -283,7 +282,7 @@ exp::call::parse(f, s, i, prec, prev) {
     }
     while (close.res == void);
 
-    return parse_res::val(exp::call(to_loc(s, loc, f), prev, args), n);
+    return parse_res::val(exp::call(source::to_loc(s, loc), prev, args), n);
 }
 
 exp::member(loc, obj, name) {
@@ -292,13 +291,13 @@ exp::member(loc, obj, name) {
     res.name = name;
     return res;
 }
-exp::member::parse(f, s, i, prec, prev) {
+exp::member::parse(s, i, prec, prev) {
     if prec > 40: return parse_res::fail;
     let n = skip_white(s, i);
     const loc = i + n;
 
     if prev == void {
-        const res = exp::parse(f, s, i + n, 41);
+        const res = exp::parse(s, i + n, 41);
         if res.res == void: return res;
         n = n + res.n;
         prev = res.res;
@@ -312,10 +311,10 @@ exp::member::parse(f, s, i, prec, prev) {
     if name.res == void: return parse_res::err("Expected a member name", i + n, name);
     n = n + name.n;
 
-    return parse_res::val(exp::member(to_loc(s, loc, f), prev, name), n);
+    return parse_res::val(exp::member(source::to_loc(s, loc), prev, name), n);
 }
 
-exp::parens::parse(f, s, i, prec, prev) {
+exp::parens::parse(s, i, prec, prev) {
     if prev != void: return parse_res::fail;
     let n = skip_white(s, i);
     const loc = i + n;
@@ -324,7 +323,7 @@ exp::parens::parse(f, s, i, prec, prev) {
     if open.res == void: return open;
     n = n + open.n;
 
-    const exp = exp::parse(f, s, i + n);
+    const exp = exp::parse(s, i + n);
     if exp.res == void: return parse_res::err("Expected an expression", n + i, exp);
     n = n + exp.n;
 
@@ -342,7 +341,7 @@ exp::assign(loc, op, obj, val) {
     res.op = op;
     return res;
 }
-exp::assign::parse(f, s, i, prec, prev, op) {
+exp::assign::parse(s, i, prec, prev, op) {
     if prev == void: return parse_res::fail;
     if prec > 1: return parse_res::fail;
 
@@ -353,12 +352,12 @@ exp::assign::parse(f, s, i, prec, prev, op) {
     if op_res.res == void: return op_res;
     n = n + op_res.n;
 
-    const exp = exp::parse(f, s, i + n, 1);
+    const exp = exp::parse(s, i + n, 1);
     if exp.res == void: return parse_res::err("Expected an expression", n + i, exp);
     n = n + exp.n;
 
-    if op == "": return parse_res::val(exp::assign(to_loc(s, loc, f), op, prev, exp.res), n);
-    else: return parse_res::val(exp::assign(to_loc(s, loc, f), void, prev, exp.res), n);
+    if op == "": return parse_res::val(exp::assign(source::to_loc(s, loc), op, prev, exp.res), n);
+    else: return parse_res::val(exp::assign(source::to_loc(s, loc), void, prev, exp.res), n);
 }
 
 exp::bin_op(loc, op, a, b) {
@@ -368,7 +367,7 @@ exp::bin_op(loc, op, a, b) {
     res.b = b;
     return res;
 }
-exp::bin_op::parse(f, s, i, prec, prev, op, prec_op) {
+exp::bin_op::parse(s, i, prec, prev, op, prec_op) {
     if prev == void: return parse_res::fail;
     if prec > prec_op: return parse_res::fail;
 
@@ -379,11 +378,11 @@ exp::bin_op::parse(f, s, i, prec, prev, op, prec_op) {
     if op_res.res == void: return op_res;
     n = n + op_res.n;
 
-    const exp = exp::parse(f, s, i + n, prec_op + 1);
+    const exp = exp::parse(s, i + n, prec_op + 1);
     if exp.res == void: return parse_res::err("Expected an expression", n + i, exp);
     n = n + exp.n;
 
-    return parse_res::val(exp::bin_op(to_loc(s, loc, f), op, prev, exp.res), n);
+    return parse_res::val(exp::bin_op(source::to_loc(s, loc), op, prev, exp.res), n);
 }
 
 exp::pre_op(loc, op, val) {
@@ -392,7 +391,7 @@ exp::pre_op(loc, op, val) {
     res.val = val;
     return res;
 }
-exp::pre_op::parse(f, s, i, prec, prev, op, prec_op) {
+exp::pre_op::parse(s, i, prec, prev, op, prec_op) {
     if prev != void: return parse_res::fail;
     if prec > prec_op: return parse_res::fail;
 
@@ -403,11 +402,11 @@ exp::pre_op::parse(f, s, i, prec, prev, op, prec_op) {
     if op_res.res == void: return op_res;
     n = n + op_res.n;
 
-    const exp = exp::parse(f, s, i + n, prec_op);
+    const exp = exp::parse(s, i + n, prec_op);
     if exp.res == void: return parse_res::err("Expected an expression", n + i, exp);
     n = n + exp.n;
 
-    return parse_res::val(exp::pre_op(to_loc(s, loc, f), op, exp.res), n);
+    return parse_res::val(exp::pre_op(source::to_loc(s, loc), op, exp.res), n);
 }
 
 exp::post_op(loc, op, val) {
@@ -416,7 +415,7 @@ exp::post_op(loc, op, val) {
     res.val = val;
     return res;
 }
-exp::post_op::parse(f, s, i, prec, prev, op, prec_op) {
+exp::post_op::parse(s, i, prec, prev, op, prec_op) {
     if prev == void: return parse_res::fail;
     if prec > prec_op: return parse_res::fail;
 
@@ -427,7 +426,7 @@ exp::post_op::parse(f, s, i, prec, prev, op, prec_op) {
     if op_res.res == void: return op_res;
     n = n + op_res.n;
 
-    return parse_res::val(exp::post_op(to_loc(s, loc, f), op, exp.res), n);
+    return parse_res::val(exp::post_op(source::to_loc(s, loc), op, exp.res), n);
 }
 
 
@@ -436,7 +435,7 @@ exp::int(loc, data) {
     res.data = data;
     return res;
 }
-exp::int::parse(f, s, i, prec, prev) {
+exp::int::parse(s, i, prec, prev) {
     if prev != void: return parse_res::fail;
 
     let n = skip_white(s, i);
@@ -447,27 +446,27 @@ exp::int::parse(f, s, i, prec, prev) {
 
         const res = exp::parse_hex(s, i + n);
         if res.res == void: return parse_res::err("Expected hex number after '0x'", i + n, res);
-        else: return parse_res::val(exp::int(to_loc(s, loc, f), res.res), n + res.n);
+        else: return parse_res::val(exp::int(source::to_loc(s, loc), res.res), n + res.n);
     }
     else if parse_keyword(s, i, "0b").n > 0 {
         n = n + 2;
 
         const res = exp::parse_bin(s, i + n);
         if res.res == void: return parse_res::err("Expected binary number after '0b'", i + n, res);
-        else: return parse_res::val(exp::int(to_loc(s, loc, f), res.res), n + res.n);
+        else: return parse_res::val(exp::int(source::to_loc(s, loc), res.res), n + res.n);
     }
     else if parse_keyword(s, i, "0").n > 0 {
         const res = exp::parse_oct(s, i + n);
         if res.res == void: return parse_res::err("Expected binary number after '0b'", i + n + 1, res);
-        else: return parse_res::val(exp::int(to_loc(s, loc, f), res.res), n + res.n);
+        else: return parse_res::val(exp::int(source::to_loc(s, loc), res.res), n + res.n);
     }
     else {
         const res = exp::parse_dec(s, i + n);
         if res.res == void: return res;
-        else: return parse_res::val(exp::int(to_loc(s, loc, f), res.res), n + res.n);
+        else: return parse_res::val(exp::int(source::to_loc(s, loc), res.res), n + res.n);
     }
 }
-exp::char::parse(f, s, i, prec, prev) {
+exp::char::parse(s, i, prec, prev) {
     if prev != void: return parse_res::fail;
 
     let n = skip_white(s, i);
@@ -480,7 +479,7 @@ exp::char::parse(f, s, i, prec, prev) {
     let res = 0;
 
     do {
-        const curr = str::at(s, i + n);
+        const curr = source::at(s, i + n);
         if curr == void: return parse_res::err("Unterminated char literal", i + n);
     }
     while curr != '\'' {
@@ -496,7 +495,7 @@ exp::char::parse(f, s, i, prec, prev) {
     }
     n = n + 1;
 
-    return parse_res::val(exp::int(to_loc(s, loc, f), res), n);
+    return parse_res::val(exp::int(source::to_loc(s, loc), res), n);
 }
 
 exp::string(loc, data) {
@@ -504,7 +503,7 @@ exp::string(loc, data) {
     res.data = data;
     return res;
 }
-exp::string::parse(f, s, i, prec, prev) {
+exp::string::parse(s, i, prec, prev) {
     if prev != void: return parse_res::fail;
 
     let n = skip_white(s, i);
@@ -517,7 +516,7 @@ exp::string::parse(f, s, i, prec, prev) {
     let res = arr();
 
     do {
-        const curr = str::at(s, i + n);
+        const curr = source::at(s, i + n);
         if curr == void: return parse_res::err("Unterminated string literal", i + n);
     }
     while curr != '"' {
@@ -529,5 +528,5 @@ exp::string::parse(f, s, i, prec, prev) {
     }
     n = n + 1;
 
-    return parse_res::val(exp::string(to_loc(f, s, loc), res), n);
+    return parse_res::val(exp::string(source::to_loc(s, loc), res), n);
 }
