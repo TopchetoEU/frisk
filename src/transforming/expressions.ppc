@@ -61,6 +61,8 @@ exp::assign::transform(element) {
 
 exp::bin_op::transform(element) {
     if element.type != "exp::bin_op": return void;
+    if element.op == '&': return "(" + transform(element.a) + "&&" + transform(element.b) + ")";
+    if element.op == '|': return "(" + transform(element.a) + "||" + transform(element.b) + ")";
     return "(" + transform(element.a) + element.op + transform(element.b) + ")";
 }
 
