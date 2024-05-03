@@ -37,7 +37,7 @@ stm::parse_body(s, i, semicolon, req_colon) {
         n = n + colon.n;
         const res = stm::parse(s, i + n, semicolon);
         if res.res == void: return parse_res::err("Expected a statement after colon", i + n, res);
-        return parse_res::val(arr(res.res), n + res.n);
+        return parse_res::val(arr::append(arr(), res.res), n + res.n);
     }
     if _semicolon.res != void {
         return parse_res::val(arr(), n + _semicolon.n);
@@ -45,7 +45,7 @@ stm::parse_body(s, i, semicolon, req_colon) {
     if not(req_colon) {
         const res = stm::parse(s, i, semicolon);
         if res.res == void: return res;
-        return parse_res::val(arr(res.res), res.n);
+        return parse_res::val(arr::append(arr(), res.res), res.n);
     }
 
     return parse_res::fail;

@@ -1,7 +1,4 @@
 not(a): asm::js "return !$$a";
-and(a, b): asm::js "return $$a & $$b";
-or(a, b): asm::js "return $$a | $$b";
-xor(a, b): asm::js "return $$a ^ $$b";
 
 print(): asm::js "console.log.apply(console, arguments)";
 
@@ -11,13 +8,16 @@ const false = asm::js "false";
 
 object(): asm::js "return {}";
 
-arr(): asm::js "return Array.apply(undefined, arguments)";
+arr(): asm::js "return []";
 arr::at(arr, i): asm::js "return $$arr[Number($$i)]";
-arr::len(arr): asm::js "return BigInt($$arr.length)";
-arr::append(arr, el): asm::js "return $$arr.push($$el)";
-arr::append_all(arr1, arr2): asm::js "
-    $$arr1.push(...$$arr2);
-    return $$arr1;
+arr::len(self): asm::js "return BigInt($$self.length)";
+arr::append(self, el): asm::js "
+    $$self.push($$el);
+    return $$self;
+";
+arr::append_all(self, arr): asm::js "
+    $$self.push(...$$arr);
+    return $$self;
 ";
 
 str::at(str, i): asm::js "
@@ -26,7 +26,6 @@ str::at(str, i): asm::js "
     else return BigInt(res.charCodeAt());
 ";
 str::len(str): asm::js "return BigInt($$str.length)";
-str::cat(): asm::js "return [...arguments].flat().join('')";
 
 char::is_upper(char): return char >= 'A' & char <= 'Z';
 char::is_lower(char): return char >= 'a' & char <= 'z';

@@ -181,7 +181,7 @@ exp::parse_char(s, i) {
         if c == '0' {
             const res = exp::parse_oct(s, i + n, 7);
             if res.res == void: return parse_res::err("Expected an octal number", i + n, res);
-            return parse_res::val(and(res.res, 65535), n + res.n);
+            return parse_res::val(res.res % 0xFFFF, n + res.n);
         }
         if c == 'b' {
             const res = exp::parse_oct(s, i + n, 16);
