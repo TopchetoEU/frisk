@@ -7,7 +7,7 @@ skip_white(s, i) {
         if comment_state == "one_slash" {
             if c == '/': comment_state = "single";
             else if c == '*': comment_state = "multil";
-            else comment_state = void;
+            else return n - 1;
         }
         else if comment_state == "single" {
             if c == '\n': comment_state = "end";
