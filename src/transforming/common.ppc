@@ -1,10 +1,10 @@
 noop::transform(element) {
-    if element.type != "noop": return void;
+    if element.kind != "noop": return void;
     return "";
 }
 
 raw::transform(element) {
-    if element.type != "raw": return void;
+    if element.kind != "raw": return void;
     return element.data;
 }
 

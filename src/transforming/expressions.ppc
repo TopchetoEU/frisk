@@ -30,13 +30,13 @@ exp::transform(element) {
 }
 
 exp::var::transform(element) {
-    if element.type != "exp::var": return void;
+    if element.kind != "exp::var": return void;
 
     return "($$" + transform_identifier(element.name) + ")";
 }
 
 exp::call::transform(element) {
-    if element.type != "exp::call": return void;
+    if element.kind != "exp::call": return void;
 
     let res = transform(element.obj) + "(";
 
@@ -50,34 +50,34 @@ exp::call::transform(element) {
 }
 
 exp::member::transform(element) {
-    if element.type != "exp::member": return void;
+    if element.kind != "exp::member": return void;
     return transform(element.obj) + "." + transform_identifier(element.name);
 }
 
 exp::assign::transform(element) {
-    if element.type != "exp::assign": return void;
+    if element.kind != "exp::assign": return void;
     return "(" + transform(element.obj) + element.op + "=" + transform(element.val) + ")";
 }
 
 exp::bin_op::transform(element) {
-    if element.type != "exp::bin_op": return void;
+    if element.kind != "exp::bin_op": return void;
     if element.op == "&": return "(" + transform(element.a) + "&&" + transform(element.b) + ")";
     if element.op == "|": return "(" + transform(element.a) + "||" + transform(element.b) + ")";
     return "(" + transform(element.a) + element.op + transform(element.b) + ")";
 }
 
 exp::pre_op::transform(element) {
-    if element.type != "exp::pre_op": return void;
+    if element.kind != "exp::pre_op": return void;
     return "(" + element.op + transform(element.val) + ")";
 }
 
 exp::int::transform(element) {
-    if element.type != "exp::int": return void;
+    if element.kind != "exp::int": return void;
     return "(" + element.data + "n)";
 }
 
 exp::string::transform(element) {
-    if element.type != "exp::string": return void;
+    if element.kind != "exp::string": return void;
 
     const alphabet = "0123456789ABCDEF";
     let res = "'";

@@ -9,7 +9,7 @@ def::transform(element) {
 }
 
 def::func::transform(element) {
-    if element.type != "def::func": return void;
+    if element.kind != "def::func": return void;
 
     let res = "function $$" + transform_identifier(element.name) + "(";
 
@@ -23,7 +23,7 @@ def::func::transform(element) {
 }
 
 def::entry::transform(element) {
-    if element.type != "def::entry": return void;
+    if element.kind != "def::entry": return void;
 
     return "{" + transform_body(element.body) + "}";
 }

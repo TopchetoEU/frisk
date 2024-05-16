@@ -18,7 +18,7 @@ stm::transform(element) {
 }
 
 stm::var_decl::transform(element) {
-    if element.type != "stm::var_decl": return void;
+    if element.kind != "stm::var_decl": return void;
 
     let res;
 
@@ -32,12 +32,12 @@ stm::var_decl::transform(element) {
 }
 
 stm::compound::transform(element) {
-    if element.type != "stm::compound": return void;
+    if element.kind != "stm::compound": return void;
     return "{" + transform_body(element.body) + "}";
 }
 
 stm::if::transform(element) {
-    if element.type != "stm::if": return void;
+    if element.kind != "stm::if": return void;
     return
         "if(" + transform(element.cond) + "){" +
         transform_body(element.if_body) + "}" +
@@ -45,7 +45,7 @@ stm::if::transform(element) {
 }
 
 stm::loop::transform(element) {
-    if element.type != "stm::loop": return void;
+    if element.kind != "stm::loop": return void;
 
     if element.cond == void: return
         "for(;;){" +
@@ -59,7 +59,7 @@ stm::loop::transform(element) {
 }
 
 stm::return::transform(element) {
-    if element.type != "stm::return": return void;
+    if element.kind != "stm::return": return void;
 
     if element.val == void: return "return";
     else: return "return " + transform(element.val);

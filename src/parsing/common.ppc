@@ -107,7 +107,7 @@ parse_identifier(s, i) {
 
 node(type, loc) {
     const res = object();
-    res.type = type;
+    res.kind = type;
     res.loc = loc;
     return res;
 }
