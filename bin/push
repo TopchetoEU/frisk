@@ -1,6 +1,6 @@
 #!/bin/node
 
-const { readdirSync, writeFileSync, readFileSync } = require('fs');
+const { readdirSync, writeFileSync, readFileSync, rmSync } = require('fs');
 const { spawnSync, execSync } = require("child_process");
 
 const i = (readdirSync("bin")
@@ -21,7 +21,17 @@ if (res.status !== 0) {
     process.stderr.write(res.stderr);
     process.exit(res.status);
 }
-res = res.stdout.toString();
+
+writeFileSync("bin/ppc_tmp", `#!/bin/node\n${res.stdout.toString()}`, { mode: '755' });
+
+res = spawnSync("bin/ppc_tmp", srcs);
+if (res.error) throw res.error;
+if (res.status !== 0) {
+    process.stdout.write(res.stdout);
+    process.stderr.write(res.stderr);
+    process.exit(res.status);
+}
 
 writeFileSync(`bin/v${i + 1}.js`, readFileSync(`bin/ppc`));
-writeFileSync("bin/ppc", `#!/bin/node\n${res}`);
+writeFileSync("bin/ppc", `#!/bin/node\n${res.stdout.toString()}`);
+rmSync("bin/ppc_tmp");
