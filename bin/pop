@@ -1,7 +1,22 @@
 #!/bin/node
 
 const { readdirSync, writeFileSync, readFileSync, rmSync } = require('fs');
+const { argv } = process;
 
+if (argv.includes("--help") || argv.includes("-h")) {
+    console.log("This command is the counterpart of bin/pop. As the name implies, it is used to");
+    console.log("remove the current bin/ppc, and replace it with the last bin/vN on the version stack.");
+    console.log();
+    console.log("NOTE: use this command with caution, as this could get you too much back in");
+    console.log("time,and leave you with an uncompilable project. In general, this should only");
+    console.log(" be used after a single successful bin/push command");
+    console.log();
+    console.log("--help or -h shows this message");
+    console.log();
+    console.log("Author: TopchetoEU");
+    console.log("License: MIT");
+    process.exit(0);
+}
 const i = (readdirSync("bin")
     .filter(v => v.includes(".js"))
     .map(v => v.split('.')[0].substring(1))
@@ -15,3 +30,5 @@ if (i < 0) {
 
 writeFileSync("bin/ppc", readFileSync(`bin/v${i}.js`));
 rmSync(`bin/v${i}.js`);
+
+console.log("Successfully popped!")

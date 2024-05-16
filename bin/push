@@ -2,6 +2,43 @@
 
 const { readdirSync, writeFileSync, readFileSync, rmSync } = require('fs');
 const { spawnSync, execSync } = require("child_process");
+const { argv } = process;
+
+if (argv.includes("--help") || argv.includes("-h")) {
+    console.log("This command is used to recompile the compiler with itself. It will keep a");
+    console.log("sequential record of previous versions, numbered with v0, v1, ... vN. When you");
+    console.log("execute this command, the current bin/ppc will be used to compile the codebase");
+    console.log("and then will become vN, where N is the next in the sequence");
+    console.log();
+    console.log("Additionally, you can specify how many times you want the compiler to recompile");
+    console.log("itself, aka: bin/ppc compiles the source, and generates bin/ppc_tmp, which");
+    console.log("compiles the source and so on. This is specified by passign a single number as");
+    console.log("the first argument. The default is 0");
+    console.log();
+    console.log("--help or -h shows this message");
+    console.log();
+    console.log("Specifying --replace, --pop, -r -p will invoke 'bin/pop' before doing anything");
+    console.log("Specifying --dry-run, --pop-after, -d or -pa will invoke 'bin/pop' after successfully running the program");
+    console.log();
+    console.log("Examples:");
+    console.log("Compiling the project after introducing new syntax:");
+    console.log("    bin/push 1");
+    console.log("Compiling the project after a bugfix:");
+    console.log("    bin/push");
+    console.log("Stresstesting:");
+    console.log("    bin/push 1000 -p");
+    console.log();
+    console.log("Author: TopchetoEU");
+    console.log("License: MIT");
+    process.exit(0);
+}
+
+const dryRun = !!['--dry-run', '--pop-after', '-d', '-pa' ].find(v => argv.includes(v));
+const popBefore = !dryRun && !![ '--replace', '--pop', '-r', '-p' ].find(v => argv.includes(v));
+
+console.log(dryRun, popBefore)
+
+if (popBefore) execSync("bin/pop", { stdio: 'inherit' });
 
 const i = (readdirSync("bin")
     .filter(v => v.includes(".js"))
@@ -14,6 +51,7 @@ const srcs = [
     ...execSync("find src -name '*.ppc'").toString().split('\n'),
 ].filter(v => v !== '');
 
+console.log(`Iteration 1...`);
 let res = spawnSync("bin/ppc", srcs);
 if (res.error) throw res.error;
 if (res.status !== 0) {
@@ -22,17 +60,23 @@ if (res.status !== 0) {
     process.exit(res.status);
 }
 
-writeFileSync("bin/ppc_tmp", `#!/bin/node\n${res.stdout.toString()}`, { mode: '755' });
+for (let i = 0; i < Number(argv[2] ?? 0) - 1; i++) {
+    writeFileSync("bin/ppc_tmp", `#!/bin/node\n${res.stdout.toString()}`, { mode: '755' });
+    console.log(`Iteration ${i + 2}...`);
 
-res = spawnSync("bin/ppc_tmp", srcs);
-if (res.error) throw res.error;
-if (res.status !== 0) {
-    rmSync("bin/ppc_tmp");
-    process.stdout.write(res.stdout);
-    process.stderr.write(res.stderr);
-    process.exit(res.status);
+    res = spawnSync("bin/ppc_tmp", srcs);
+    if (res.error) throw res.error;
+    if (res.status !== 0) {
+        rmSync("bin/ppc_tmp");
+        process.stdout.write(res.stdout);
+        process.stderr.write(res.stderr);
+        process.exit(res.status);
+    }
 }
 
 writeFileSync(`bin/v${i + 1}.js`, readFileSync(`bin/ppc`));
 writeFileSync("bin/ppc", `#!/bin/node\n${res.stdout.toString()}`);
-rmSync("bin/ppc_tmp");
+rmSync("bin/ppc_tmp", { force: true });
+console.log("Successfully pushed!");
+
+if (dryRun) execSync("bin/pop", { stdio: 'inherit' });
