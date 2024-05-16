@@ -1,6 +1,7 @@
 not(a): asm::js "return !$$a";
 
 print(): asm::js "console.log.apply(console, arguments)";
+eprint(): asm::js "console.error.apply(console, arguments)";
 
 const void = asm::js "undefined";
 const true = asm::js "true";

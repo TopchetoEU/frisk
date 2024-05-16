@@ -27,6 +27,7 @@ writeFileSync("bin/ppc_tmp", `#!/bin/node\n${res.stdout.toString()}`, { mode: '7
 res = spawnSync("bin/ppc_tmp", srcs);
 if (res.error) throw res.error;
 if (res.status !== 0) {
+    rmSync("bin/ppc_tmp");
     process.stdout.write(res.stdout);
     process.stderr.write(res.stderr);
     process.exit(res.status);
