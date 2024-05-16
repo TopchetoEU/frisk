@@ -16,6 +16,8 @@ main(args) {
 
     i = 0;
 
+    print(arr::at(defs, 0));
+
     if arr::len(errs) > 0 {
         while i < arr::len(errs) {
             print(arr::at(errs, i));

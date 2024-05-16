@@ -51,9 +51,10 @@ stm::parse_body(s, i, semicolon, req_colon) {
     return parse_res::fail;
 }
 
-stm::var_decl(loc, mutable, name, init) {
+stm::var_decl(loc, mutable, type, name, init) {
     const res = node("stm::var_decl", loc);
     res.mutable = mutable;
+    res.type = type;
     res.name = name;
     res.init = init;
     return res;
@@ -80,6 +81,14 @@ stm::var_decl::parse(s, i, semicolon) {
     if name.res == void: return parse_res::err("Expected a variable name", i + n, name);
     n = n + name.n;
 
+    const colon = parse_operator(s, i + n, ":");
+    if colon.res == void: return parse_res::err("Expected a type specified", i + n, colon);
+    n = n + colon.n;
+
+    const type = type::parse(s, i + n);
+    if type.res == void: return parse_res::err("Expected a type", i + n, type);
+    n = n + type.n;
+
     let val;
 
     const op = parse_operator(s, i + n, "=");
@@ -101,7 +110,7 @@ stm::var_decl::parse(s, i, semicolon) {
         n = n + op.n;
     }
 
-    return parse_res::val(stm::var_decl(source::to_loc(s, loc), mutable, name.res, val), n);
+    return parse_res::val(stm::var_decl(source::to_loc(s, loc), mutable, type.res, name.res, val), n);
 }
 
 stm::exp::parse(s, i, semicolon) {

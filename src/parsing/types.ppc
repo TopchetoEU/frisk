@@ -1,0 +1,23 @@
+type::parse(s, i) {
+    const alias_ref = type::alias_ref::parse(s, i);
+    if alias_ref.msg != void | alias_ref.res != void: return alias_ref;
+
+    return parse_res::fail;
+}
+
+type::alias_ref(loc, name) {
+    const res = node("type::alias_ref", loc);
+    res.name = name;
+    res.type = void;
+    return res;
+}
+type::alias_ref::parse(s, i) {
+    let n = skip_white(s, i);
+    const loc = i + n;
+
+    let kw = parse_identifier(s, i + n);
+    if kw.res == void: return kw;
+    n = n + kw.n;
+
+    return parse_res::val(type::alias_ref(loc, kw.res), n);
+}
