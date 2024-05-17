@@ -1,3 +1,0 @@
-to_loc(s, i, f) {
-    return f + ":" + i;
-}
