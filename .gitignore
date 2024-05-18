@@ -6,3 +6,4 @@
 !/.gitignore
 !/readme.md
 !/tsconfig.json
+!/package.json

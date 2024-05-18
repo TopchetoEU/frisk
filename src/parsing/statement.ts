@@ -1,242 +1,264 @@
-import { Message } from "../utils/Message.ts";
-import { Namespace } from "../utils/Namespace.ts";
-import { Operator } from "../utils/Operator.ts";
-import { Consumer } from "./Consumer.ts";
-import { Node } from "./Node.ts";
-import { ParseResult, errLoc, loc, parseIdentifier } from "./common.ts";
-import { parseExpression } from "./expression.ts";
+import { Node, NoopNode, parseIdentifier, parseInit, parseKeyword, parseOperator } from ".";
+import { Source } from "../utils/Source";
+import { parseExpression } from "./expression";
+import { ParseRes } from "./result";
 
-export function parseStatement(c: Consumer, i: number): ParseResult<Node> {
-    let res = ParseResult.first<Node>(
-        () => IfNode.parse(c, i),
-        () => WhileNode.parse(c, i),
-        () => CompoundNode.parse(c, i),
-        () => {
-            if (c.get(i)?.isOperator(Operator.Semicolon)) return ParseResult.res(new CompoundNode([]), 1);
-            else return ParseResult.fail;
-        }
-    );
+export function parseStatement(s: Source, i: number): ParseRes<Node> {
+    const _if = IfNode.parse(s, i);
+    if (_if.hasAny()) return _if;
 
-    if (res.succeeded || res.msg) return res;
+    const _while = WhileNode.parse(s, i);
+    if (_while.hasAny()) return _while;
 
-    res = ParseResult.first<Node>(
-        () => ReturnNode.parse(c, i),
-        () => VarDeclareNode.parse(c, i),
-        () => parseExpression(c, i),
-    );
+    const ret = ReturnNode.parse(s, i);
+    if (ret.hasAny()) return ret;
 
-    if (res.failed) return res.error();
-    else if (c.get(i + res.n)?.isOperator(Operator.Semicolon)) return ParseResult.res(res.val!, res.n + 1);
-    else return res.error(new Message("Expected a semicolon after statement", errLoc(c, i, res.n)));
+    const varDecl = VarDeclareNode.parse(s, i);
+    if (varDecl.hasAny()) return varDecl;
+
+    const comp = CompoundNode.parse(s, i);
+    if (comp.hasAny()) return comp;
+
+    const exp = parseExpStatement(s, i);
+    if (exp.hasAny()) return exp;
+
+    return ParseRes.fail;
 }
 
-export function parseBody(c: Consumer, i: number) {
-    switch (c.get(i)?.operator) {
-        case Operator.Colon: {
-            let n = 1;
-            const res = parseStatement(c, i + n);
-            if (res.failed) return res.error(new Message("Expected a statement after the colon", errLoc(c, i, n)));
-            n += res.n;
+export function parseExpStatement(s: Source, i: number) {
+    let { n, loc } = parseInit(s, i);
 
-            return ParseResult.res([ res.val! ], n);
-        }
-        case Operator.BraceOpen: {
-            const res = CompoundNode.parse(c, i);
-            if (res.failed) return res.error();
-            else return ParseResult.res(res.val!.nodes, res.n);
-        }
-        case Operator.Semicolon:
-            return ParseResult.res([ ], 1);
-        default:
-            return ParseResult.error(new Message("Expected a compound statement or a single-line body"));
-    }
+    const exp = parseExpression(s, i + n);
+    if (exp.failed()) return exp;
+    n += exp.n;
+
+    const semicolon = parseOperator(s, i + n, ";");
+    if (semicolon.failed()) return ParseRes.err("Expected a semicolon", i + n, semicolon);
+    n += semicolon.n;
+
+    return ParseRes.val(exp.res!, n);
 }
 
-export class CompoundNode implements Node {
-    public constructor(public readonly nodes: Node[]) { }
+export function parseBody(s: Source, i: number, noColon: boolean) {
+    let { n, loc } = parseInit(s, i);
 
-    public toJS() {
-        return `{${this.nodes.map(v => v.toJS()).join(';')}}`;
+    const semicolon = parseOperator(s, i + n, ";");
+    if (semicolon.success()) {
+        n += semicolon.n;
+        return ParseRes.val([], n);
     }
 
-    public static parse(c: Consumer, i: number) {
-        let n = 0;
+    const brace = parseOperator(s, i + n, "{");
+    if (brace.success()) {
+        const body = CompoundNode.parse(s, i + n);
+        if (body.failed()) return ParseRes.err("Expected a body after '{'", i + n, body);
+        n += body.n;
 
+        return ParseRes.val(body.res!.nodes, n);
+    }
+
+    const colon = parseOperator(s, i + n, ":");
+    if (colon.success() || noColon) {
+        n += colon.n;
+
+        const res = parseStatement(s, i + n);
+        if (res.failed()) {
+            if (!colon.hasError()) return ParseRes.fail;
+            else return ParseRes.err("Expected a statement after the colon", i + n, res);
+        }
+        n += res.n;
+
+        return ParseRes.val([res.res!], n);
+    }
+
+    return ParseRes.fail;
+}
+
+export class CompoundNode extends Node {
+    public constructor(
+        loc: string,
+        public readonly nodes: Node[]
+    ) { super(loc); }
+
+    public static parse(s: Source, i: number) {
+        let { n, loc } = parseInit(s, i);
         const res: Node[] = [];
 
-        if (!c.get(i + n)?.isOperator(Operator.BraceOpen)) return ParseResult.fail;
-        if (!c.get(i + n + 1)?.isOperator(Operator.BraceClose)) {
-            n++;
+        const open = parseOperator(s, i + n, "{");
+        if (open.failed()) return open;
+        n += open.n;
 
-            while (true) {
-                const exp = parseStatement(c, i + n);
-                if (exp.failed) {
-                    if (exp.msg != null) {
-                        if (res.length === 0) return exp.error(new Message(`Expected a statement or a closing brace`, loc(c, i + n)));
-                        else return exp.error(new Message(`Expected a statement`, loc(c, i + n)));
-                    }
-                    else if (c.get(i + n)?.isOperator(Operator.BraceClose)) break;
-                    else return ParseResult.error(new Message(`Expected a ${Operator.stringify(Operator.BraceClose)}`, errLoc(c, i, n)));
-                }
-                else res.push(exp.val!);
-                n += exp.n;
-    
-                if (c.get(i + n)?.isOperator(Operator.BraceClose)) break;
-                else continue;
-            }
+        while (true) {
+            const stm = parseStatement(s, i + n);
+            n += stm.n;
+
+            const close = parseOperator(s, i + n, "}");
+            n += close.n;
+
+            if (stm.failed() && close.failed()) return ParseRes.err("Expected a statement", i + n, stm, close);
+            if (stm.success()) res.push(stm.res);
+            if (close.success()) break;
         }
-        else n++;
 
-        return ParseResult.res(new CompoundNode(res), n + 1);
+        return ParseRes.val(new CompoundNode(s.toLoc(loc), res), n);
     }
 }
-export class IfNode implements Node {
+export class IfNode extends Node {
     public constructor(
+        loc: string,
         public readonly cond: Node,
         public readonly ifTrue: Node[],
         public readonly ifFalse: Node[] = [],
-    ) { }
+    ) { super(loc); }
 
-    public toJS() {
-        return `if(${this.cond.toJS()}){${this.ifTrue.map(v => v.toJS()).join(';')}}else{${this.ifFalse.map(v => v.toJS()).join(';')}}`;
-    }
+    public static parse(s: Source, i: number) {
+        let { n, loc } = parseInit(s, i);
 
-    public static parse(c: Consumer, i: number): ParseResult<IfNode> {
-        let n = 0;
+        const kw = parseKeyword(s, i + n, "if");
+        if (kw.failed()) return kw;
+        n += kw.n;
 
-        if (!c.get(i + n)?.isIdentifier("if")) return ParseResult.fail;
-        n++;
-
-        const cond = parseExpression(c, i + n);
-        if (cond.failed) return cond.error(new Message("Expected an if condition", errLoc(c, i, n)));
+        const cond = parseExpression(s, i + n);
+        if (cond.failed()) return ParseRes.err("Expected an if condition", i + n, cond);
         n += cond.n;
 
-        const ifBody = parseBody(c, i + n);
-        if (ifBody.failed) return ifBody.error(new Message("Expected an if body", errLoc(c, i, n)));
+        const ifBody = parseBody(s, i + n, false);
+        if (ifBody.failed()) return ParseRes.err("Expected an if body", i + n, ifBody);
         n += ifBody.n;
 
-        let elseBody: ParseResult<Node[]> | undefined;
+        let elseBody: Node[] = [];
 
-        if (c.get(i + n)?.isIdentifier("else")) {
-            n++;
-            if (c.get(i + n)?.isIdentifier("if")) elseBody = IfNode.parse(c, i + n).map(v => [v]);
-            else elseBody = parseBody(c, i + n);
+        const elseKw = parseKeyword(s, i + n, "else");
+        if (elseKw.success()) {
+            n += elseKw.n;
 
-            if (elseBody?.failed) return elseBody.error(new Message("Expected an else body", errLoc(c, i, n)));
-            n += elseBody.n;
+            const body = parseBody(s, i + n, true);
+            if (body.failed()) return ParseRes.err("Expected an else body", i + n, body);
+            n += body.n;
+
+            elseBody = body.res!;
         }
 
-        return ParseResult.res(new IfNode(cond.val!, ifBody.val!, elseBody?.val!), n);
+        return ParseRes.val(new IfNode(s.toLoc(loc), cond.res!, ifBody.res!, elseBody), n);
     }
 }
-export class WhileNode implements Node {
+export class WhileNode extends Node {
     public constructor(
+        loc: string,
         public readonly cond?: Node,
         public readonly beforeBody: Node[] = [],
         public readonly afterBody: Node[] = [],
-    ) { }
+    ) { super(loc); }
 
-    public toJS() {
-        return `for(;;){${this.beforeBody.map(v => v.toJS()).join(';')};if(!${this.cond?.toJS() ?? 'true'})break;${this.afterBody.map(v => v.toJS()).join(';')}}`;
-    }
+    public static parse(s: Source, i: number) {
+        let { n, loc } = parseInit(s, i);
 
-    public static parse(c: Consumer, i: number) {
-        let n = 0;
+        let before: Node[] | undefined;
+        let after: Node[] | undefined;
+        let cond: Node | undefined;
+        let any = false;
 
-        let before: ParseResult<Node[]> | undefined;
-        let after: ParseResult<Node[]> | undefined;
-        let cond: ParseResult<Node> | undefined;
+        const doKw = parseKeyword(s, i + n, "do");
+        if (doKw.success()) {
+            n += doKw.n;
+            any = true;
 
-        if (c.get(i + n)?.isIdentifier("do")) {
-            n++;
+            const body = parseBody(s, i + n, true);
+            if (body.failed()) return ParseRes.err("Expected a loop prebody", i + n, body);
+            n += body.n;
 
-            before = parseBody(c, i + n);
-            if (before.failed) return before.error(new Message("Expected a do body", errLoc(c, i, n)));
-            n += before.n;
+            before = body.res;
         }
 
-        if (c.get(i + n)?.isIdentifier("while")) {
-            n++;
+        const whileKw = parseKeyword(s, i + n, "while");
+        if (whileKw.success()) {
+            n += whileKw.n;
+            any = true;
 
-            cond = parseExpression(c, i + n);
-            if (cond.failed) return cond.error(new Message("Expected a while condition", errLoc(c, i, n)));
-            n += cond.n;
+            const condRes = parseExpression(s, i + n);
+            if (condRes.failed()) return ParseRes.err("Expected a loop condition", i + n, condRes);
+            n += condRes.n;
 
-            after = parseBody(c, i + n);
-            if (after.failed) return after.error(new Message("Expected a while body", errLoc(c, i, n)));
-            n += after.n;
+            cond = condRes.res;
+
+            const body = parseBody(s, i + n, false);
+            if (body.failed()) return ParseRes.err("Expected a loop postbody", i + n, body);
+            n += body.n;
+
+            after = body.res;
         }
 
-        if (before == null && after == null) return ParseResult.fail;
+        if (!any) return ParseRes.fail;
 
-        return ParseResult.res(new WhileNode(cond?.val, before?.val, after?.val), n);
+        return ParseRes.val(new WhileNode(s.toLoc(loc), cond, before, after), n);
     }
 }
-export class ReturnNode implements Node {
+export class ReturnNode extends Node {
     public constructor(
+        loc: string,
         public readonly val?: Node,
-    ) { }
+    ) { super(loc); }
 
-    public toJS() {
-        return `return ${this.val?.toJS()}`;
-    }
+    public static parse(s: Source, i: number) {
+        let { n, loc } = parseInit(s, i);
 
-    public static parse(c: Consumer, i: number) {
-        if (!c.get(i)?.isIdentifier("return")) return ParseResult.fail;
-        let n = 1;
+        const kw = parseKeyword(s, i + n, "return");
+        if (kw.failed()) return kw;
+        n += kw.n;
 
-        const val = parseExpression(c, i + n);
-        if (val.msg) return val.error();
+        const val = parseExpression(s, i + n);
         n += val.n;
 
-        return ParseResult.res(new ReturnNode(val.val), n);
+        const semicolon = parseOperator(s, i + n, ";");
+        if (semicolon.failed()) return ParseRes.err("Expected a semicolon", i + n, semicolon);
+        n += semicolon.n;
+
+        return ParseRes.val(new ReturnNode(s.toLoc(loc), val.res), n);
     }
 }
 
-export class VarDeclareNode implements Node {
+export class VarDeclareNode extends Node {
     public constructor(
-        public readonly name: Namespace,
+        loc: string,
+        public readonly name: string,
         public readonly mutable: boolean,
         public readonly initValue?: Node,
-    ) { }
+    ) { super(loc); }
 
-    public toJS() {
-        if (this.mutable) return `let $$${this.name.join('$$')} = ${this.initValue?.toJS() ?? 'undefined'}`;
-        else return `const $$${this.name.join('$$')} = ${this.initValue!.toJS()}`;
-    }
+    public static parse(s: Source, i: number) {
+        let { n, loc } = parseInit(s, i);
 
-    public static parse(c: Consumer, i: number) {
-        let n = 0;
+        const letKw = parseKeyword(s, i + n, "let");
+        const constKw = parseKeyword(s, i + n, "const");
 
-        let mutable = false;
+        n += letKw.n;
+        n += constKw.n;
 
-        switch (c.get(i + n)?.identifier) {
-            case 'let':
-                mutable = true;
-                break;
-            case 'const':
-                break;
-            default:
-                return ParseResult.fail;
-        }
+        if (letKw.failed() && constKw.failed()) return ParseRes.fail;
+        const mutable = letKw.success();
 
-        n++;
-
-        const name = parseIdentifier(c, i + n);
-        if (name.failed) return name.error(new Message("Expected a variable name", errLoc(c, i, n)));
+        const name = parseIdentifier(s, i + n);
+        if (name.failed()) return ParseRes.err("Expeced a variable name", i + n, name);
         n += name.n;
 
-        let init: ParseResult<Node>  | undefined;
+        let init: Node | undefined;
 
-        if (c.get(i + n)?.isOperator(Operator.Assign)) {
-            n++;
+        const assign = parseOperator(s, i + n, "=");
+        if (assign.success()) {
+            n += assign.n;
 
-            init = parseExpression(c, i + n);
-            if (init.failed) return init.error(new Message("Expected an expression", errLoc(c, i, n)));
-            n += init.n;
+            const initRes = parseExpression(s, i + n);
+            if (initRes.failed()) return ParseRes.err("Expected an expression after '='", i + n, initRes);
+            n += initRes.n;
+
+            init = initRes.res!;
         }
-        else if (!mutable) return ParseResult.error(new Message("Expected an initializer for constant", errLoc(c, i, n)));
+        else if (!mutable) return ParseRes.err("Expected an initializer for constant", i + n, assign);
 
-        return ParseResult.res(new VarDeclareNode(name.val!, mutable, init?.val), n);
+        const semicolon = parseOperator(s, i + n, ";");
+        if (semicolon.failed()) return ParseRes.err("Expected a semicolon", i + n, semicolon);
+        n += semicolon.n;
+
+        return ParseRes.val(new VarDeclareNode(s.toLoc(loc), name.res!, mutable, init), n);
     }
 }

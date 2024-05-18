@@ -1,287 +1,299 @@
-import { Message } from "../utils/Message.ts";
-import { Namespace } from "../utils/Namespace.ts";
-import { Operator } from "../utils/Operator.ts";
-import { Consumer } from "./Consumer.ts";
-import { Node } from "./Node.ts";
-import { AsmNode, ParseResult, parseDelimList } from "./common.ts";
-import { errLoc } from "./common.ts";
-import { parseIdentifier } from "./common.ts";
+import { Node, RawNode, parseCharLiteral, parseIdentifier, parseInit, parseIntLiteral, parseOperator, parseStringLiteral } from ".";
+import { Source } from "../utils/Source";
+import { ParseRes } from "./result";
 
-export function parseExpression(c: Consumer, i: number, obj?: Node, precedence = 0): ParseResult<Node> {
-    let n = 0;
-
-    while (true) {
-        const res = ParseResult.first<Node>(
-            () => AsmNode.parse(c, i + n),
-            () => StringLiteralNode.parse(c, i + n, obj),
-            () => IntLiteralNode.parse(c, i + n, obj),
-            () => ObjectLiteralNode.parse(c, i + n, obj),
-            () => parseParens(c, i + n, obj),
-            () => AssignNode.parse(c, i + n, obj, precedence),
-            () => CallNode.parse(c, i + n, obj, precedence),
-            () => MemberNode.parse(c, i + n, obj, precedence),
-            () => BinaryOperatorNode.parse(c, i + n, obj, precedence),
-            () => VariableNode.parse(c, i + n, obj),
-        );
-
-        n += res.n;
-        if (res.msg) return res.error();
-        else if (res.failed) return ParseResult.res(obj!, n);
-        else obj = res.val!;
-    }
-}
-
-export function parseParens(c: Consumer, i: number, obj?: Node) {
-    if (obj != null) return ParseResult.fail;
-    let n = 0;
-
-    if (!c.get(i + n++)?.isOperator(Operator.ParenOpen)) return ParseResult.fail;
-
-    const res = parseExpression(c, i + n);
-    if (res.failed) return res.error(new Message("Expected expression in parens", errLoc(c, i, n)));
-    n += res.n;
-
-    if (!c.get(i + n)?.isOperator(Operator.ParenClose)) return ParseResult.error(new Message("Expected closing paren", errLoc(c, i, n)));
-    n++;
-
-    return ParseResult.res(res.val!, n);
-}
-
-export class AssignNode implements Node {
+export class AssignNode extends Node {
     public constructor(
+        loc: string,
         public readonly obj: Node,
         public readonly val: Node,
-    ) { }
+    ) { super(loc); }
 
     public static readonly precedence = 1;
 
-    public static parse(c: Consumer, i: number, obj?: Node, precedence = 0) {
-        if (precedence > this.precedence) return ParseResult.fail;
-        let n = 0;
+    public static parse(s: Source, i: number, obj?: Node, precedence = 0) {
+        if (precedence > this.precedence) return ParseRes.fail;
+        let { n, loc } = parseInit(s, i);
 
         if (obj == null) {
-            const res = parseExpression(c, i + n, undefined, this.precedence + 1);
-            if (res.failed) return res.error();
+            const res = parseExpression(s, i + n, undefined, this.precedence + 1);
+            if (res.failed()) return res;
             n += res.n;
-            obj = res.val!;
+            obj = res.res!;
         }
 
-        if (!c.get(i + n)?.isOperator(Operator.Assign)) return ParseResult.fail;
-        n++;
+        const op = parseOperator(s, i + n, "=");
+        if (op.failed()) return op;
+        n += op.n;
 
-        const val = parseExpression(c, i + n, undefined, this.precedence);
+        const val = parseExpression(s, i + n, undefined, this.precedence);
+        if (val.failed()) return ParseRes.err("Expected an assignment value", n, val);
         n += val.n;
 
-        if (val.failed) return val.error(new Message("Expected an assignment value", errLoc(c, i + n)));
-        else return ParseResult.res(new AssignNode(obj, val.val!), n);
-    }
-
-    public toJS() {
-        return `(${this.obj.toJS()} = ${this.val.toJS()})`;
+        return ParseRes.val(new AssignNode(s.toLoc(loc), obj, val.res!), n);
     }
 }
-export class CallNode implements Node {
+export class CallNode extends Node {
     public constructor(
+        loc: string,
         public readonly obj: Node,
         public readonly args: Node[],
-    ) { }
+    ) { super(loc); }
 
     public static readonly precedence = 39;
 
-    public static parse(c: Consumer, i: number, obj?: Node, precedence = 0) {
-        if (precedence > this.precedence) return ParseResult.fail;
-        let n = 0;
+    public static parse(s: Source, i: number, obj?: Node, precedence = 0) {
+        if (precedence > this.precedence) return ParseRes.fail;
+        let { n, loc } = parseInit(s, i);
 
         if (obj == null) {
-            const res = parseExpression(c, i + n, undefined, this.precedence + 1);
-            if (res.failed) return res.error();
+            const res = parseExpression(s, i + n, undefined, this.precedence + 1);
+            if (res.failed()) return res;
             n += res.n;
-            obj = res.val!;
+            obj = res.res!;
         }
 
-        const args = parseDelimList(c, i + n,
-            Operator.ParenOpen, Operator.ParenClose, Operator.Comma,
-            'argument', (c, i) => parseExpression(c, i)
-        );
+        const open = parseOperator(s, i + n, "(");
+        if (open.failed()) return open;
+        n += open.n;
 
-        if (args.failed) return args.error();
-        n += args.n;
+        let close = parseOperator(s, i + n, ")");
+        n += close.n;
 
-        return ParseResult.res(new CallNode(obj, args.val!), n);
-    }
+        const args: Node[] = [];
 
-    public toJS() {
-        return `(${this.obj.toJS()}(${this.args.map(v => v.toJS()).join(',')}))`;
+        if (close.failed()) while (true) {
+            const arg = parseExpression(s, i + n);
+            if (arg.failed()) return ParseRes.err("Expected an argument", i + n, arg);
+            n += arg.n;
+            args.push(arg.res!);
+
+            const delim = parseOperator(s, i + n, ",");
+            n += delim.n;
+            const close = parseOperator(s, i + n, ")");
+            n += close.n;
+
+            if (delim.failed() && close.failed()) return ParseRes.err("Expected a comma or a closing paren", i + n);
+            if (!close.failed()) break;
+        }
+
+        return ParseRes.val(new CallNode(s.toLoc(loc), obj, args), n);
     }
 }
-export class MemberNode implements Node {
+export class MemberNode extends Node {
     public constructor(
+        loc: string,
         public readonly obj: Node,
-        public readonly name: Namespace,
-    ) { }
+        public readonly name: string,
+    ) { super(loc); }
 
     public static readonly precedence = 40;
 
-    public static parse(c: Consumer, i: number, obj?: Node, precedence = 0) {
-        if (precedence > this.precedence) return ParseResult.fail;
-        let n = 0;
+    public static parse(s: Source, i: number, obj?: Node, precedence = 0) {
+        if (precedence > this.precedence) return ParseRes.fail;
+        let { n, loc } = parseInit(s, i);
 
         if (obj == null) {
-            const res = parseExpression(c, i + n, undefined, this.precedence + 1);
-            if (res.failed) return res.error();
+            const res = parseExpression(s, i + n, undefined, this.precedence + 1);
+            if (res.failed()) return res;
             n += res.n;
-            obj = res.val!;
+            obj = res.res!;
         }
 
-        if (!c.get(i + n)?.isOperator(Operator.Dot)) return ParseResult.fail;
-        n++;
+        const dot = parseOperator(s, i + n, ".");
+        if (dot.failed()) return dot;
+        n += dot.n;
 
-        const res = parseIdentifier(c, i + n);
-        n += res.n;
+        const name = parseIdentifier(s, i + n);
+        if (name.failed()) return ParseRes.err("Expected a variable name", i + n, name);
+        n += name.n;
 
-        if (res.failed) return res.error(new Message("Expected a variable name", errLoc(c, i + n)));
-        else return ParseResult.res(new MemberNode(obj, res.val!), n);
-    }
-
-    public toJS() {
-        return `(${this.obj.toJS()}.${this.name.join('$$')})`;
+        return ParseRes.val(new MemberNode(s.toLoc(loc), obj, name.res!), n);
     }
 }
-export class BinaryOperatorNode implements Node {
+export class BinaryOperatorNode extends Node {
     public constructor(
+        loc: string,
         public readonly op: string,
         public readonly a: Node,
         public readonly b: Node,
-    ) { }
+    ) { super(loc); }
 
-    public static readonly ops: { op: Operator, prec: number, js: string }[] = [
-        { op: Operator.Add, prec: 10, js: '+' },
-        { op: Operator.Subtract, prec: 10, js: '-' },
+    private static _parseOne(s: Source, i: number, obj: Node | undefined, realPrec: number, operator: string, prec: number) {
+        if (realPrec > prec) return ParseRes.fail;
+        let { n, loc } = parseInit(s, i);
 
-        { op: Operator.Multiply, prec: 11, js: '*' },
-        { op: Operator.Divide, prec: 11, js: '/' },
-        { op: Operator.Modulo, prec: 11, js: '%' },
+        if (obj == null) {
+            const res = parseExpression(s, i + n, undefined, prec + 1);
+            if (res.failed()) return res;
+            n += res.n;
+            obj = res.res!;
+        }
 
-        { op: Operator.LessThan, prec: 5, js: '<' },
-        { op: Operator.GreaterThan, prec: 5, js: '>' },
-        { op: Operator.LessThanEquals, prec: 5, js: '<=' },
-        { op: Operator.GreaterThanEquals, prec: 5, js: '>=' },
+        const op = parseOperator(s, i + n, operator);
+        if (op.failed()) return op;
+        n += op.n;
 
-        { op: Operator.Equals, prec: 4, js: '===' },
-        { op: Operator.NotEquals, prec: 4, js: '!==' },
+        const val = parseExpression(s, i + n, undefined, prec);
+        if (val.failed()) return ParseRes.err("Expected a value after operator", n, val);
+        n += val.n;
 
-        { op: Operator.And, prec: 3, js: '&&' },
-        { op: Operator.Or, prec: 2, js: '||' },
-    ]
-
-    public static parse(c: Consumer, i: number, obj?: Node, precedence = 0) {
-        const opPrec = this.ops.find(v => v.op == c.get(i)?.operator);
-        if (opPrec == null || obj == null) return ParseResult.fail;
-        if (precedence > opPrec.prec) return ParseResult.fail;
-
-        const { js, prec } = opPrec;
-        let n = 1;
-
-        const other = parseExpression(c, i + n, undefined, prec + 1);
-        if (other.failed) return other.error(new Message("Expected a second value", errLoc(c, i + n)));
-        n += other.n;
-
-        return ParseResult.res(new BinaryOperatorNode(js, obj, other.val!), n);
+        return ParseRes.val(new BinaryOperatorNode(s.toLoc(loc), operator, obj, val.res!), n);
     }
 
-    public toJS() {
-        return `(${this.a.toJS()}${this.op}${this.b.toJS()})`;
+    public static parse(s: Source, i: number, obj?: Node, precedence = 0) {
+        const add = this._parseOne(s, i, obj, precedence, "+", 10);
+        if (add.hasAny()) return add;
+        const sub = this._parseOne(s, i, obj, precedence, '-', 10);
+        if (sub.hasAny()) return sub;
+
+        const mult = this._parseOne(s, i, obj, precedence, '*', 11);
+        if (mult.hasAny()) return mult;
+        const div = this._parseOne(s, i, obj, precedence, '/', 11);
+        if (div.hasAny()) return div;
+        const mod = this._parseOne(s, i, obj, precedence, '%', 11);
+        if (mod.hasAny()) return mod;
+
+        const lt = this._parseOne(s, i, obj, precedence, '<', 5);
+        if (lt.hasAny()) return lt;
+        const gt = this._parseOne(s, i, obj, precedence, '>', 5);
+        if (gt.hasAny()) return gt;
+        const lte = this._parseOne(s, i, obj, precedence, '<=', 5);
+        if (lte.hasAny()) return lte;
+        const gte = this._parseOne(s, i, obj, precedence, '>=', 5);
+        if (gte.hasAny()) return gte;
+
+        const eq = this._parseOne(s, i, obj, precedence, '==', 4);
+        if (eq.hasAny()) return eq;
+        const neq = this._parseOne(s, i, obj, precedence, '!=', 4);
+        if (neq.hasAny()) return neq;
+
+        const and = this._parseOne(s, i, obj, precedence, '&&', 3);
+        if (and.hasAny()) return and;
+        const or = this._parseOne(s, i, obj, precedence, '||', 2);
+        if (or.hasAny()) return or;
+
+        return ParseRes.fail;
     }
 }
-export class VariableNode implements Node {
+export class VariableNode extends Node {
     public constructor(
-        public readonly name: Namespace,
-    ) { }
+        loc: string,
+        public readonly name: string,
+    ) { super(loc); }
 
-    public static parse(c: Consumer, i: number, obj?: Node) {
-        if (obj != null) return ParseResult.fail;
+    public static parse(s: Source, i: number, obj?: Node) {
+        if (obj != null) return ParseRes.fail;
+        let { n, loc } = parseInit(s, i);
 
-        const res = parseIdentifier(c, i);
-        if (res.failed) return res.error();
-        else return ParseResult.res(new VariableNode(res.val!), res.n);
-    }
+        const res = parseIdentifier(s, i + n);
+        if (res.failed()) return res;
+        n += res.n;
 
-    public toJS() {
-        return `($$${this.name.join('$$')})`;
+        return ParseRes.val(new VariableNode(s.toLoc(loc), res.res!), n);
     }
 }
-export class StringLiteralNode implements Node {
+export class StringLiteralNode extends Node {
     public constructor(
+        loc: string,
         public readonly data: Uint16Array,
-    ) { }
+    ) { super(loc); }
 
-    public static parse(c: Consumer, i: number, obj?: Node) {
-        if (obj != null) return ParseResult.fail;
+    public static parse(s: Source, i: number, obj?: Node) {
+        if (obj != null) return ParseRes.fail;
+        let { n, loc } = parseInit(s, i);
 
-        const tok = c.get(i);
-        if (!tok?.stringLiteral) return ParseResult.fail;
-        else return ParseResult.res(new StringLiteralNode(tok.stringLiteral), 1);
-    }
+        const data = parseStringLiteral(s, i + n);
+        if (data.failed()) return data;
+        n += data.n;
 
-    public toJS() {
-        return `('${[ ...this.data ]
-            .map(v => v.toString(16))
-            .map(v => {
-                while (v.length < 4) v = '0' + v;
-                return v;
-            })
-            .map(v => '\\u' + v)
-            .join('')}')`;
+        return ParseRes.val(new StringLiteralNode(s.toLoc(loc), new Uint16Array(data.res!)), n);
     }
 }
-export class IntLiteralNode implements Node {
+export class IntLiteralNode extends Node {
     public constructor(
+        loc: string,
         public readonly data: bigint,
-    ) { }
+    ) { super(loc); }
 
-    public static parse(c: Consumer, i: number, obj?: Node) {
-        if (obj != null) return ParseResult.fail;
+    public static parse(s: Source, i: number, obj?: Node) {
+        if (obj != null) return ParseRes.fail;
+        let { n, loc } = parseInit(s, i);
 
-        const tok = c.get(i);
-        if (tok?.intLiteral != null) return ParseResult.res(new IntLiteralNode(tok.intLiteral), 1);
-        if (tok?.charLiteral != null) return ParseResult.res(new IntLiteralNode(tok.charLiteral), 1);
-        return ParseResult.fail;
+        const char = parseCharLiteral(s, i + n);
+        if (char.hasAny()) return ParseRes.val(new IntLiteralNode(s.toLoc(loc), char.res!), n + char.n);
+
+        const int = parseIntLiteral(s, i + n);
+        if (int.hasAny()) return ParseRes.val(new IntLiteralNode(s.toLoc(loc), int.res!), n + int.n);
+
+        return ParseRes.fail;
     }
 
     public toJS() {
         return `(${this.data}n)`;
     }
 }
-export class ObjectLiteralNode implements Node {
-    public constructor(
-        public readonly values: Record<string, Node>,
-    ) { }
 
-    public static parse(c: Consumer, i: number, obj?: Node) {
-        if (obj != null) return ParseResult.fail;
+function _parseParens(s: Source, i: number, obj?: Node) {
+    if (obj != null) return ParseRes.fail;
+    let { n } = parseInit(s, i);
 
-        return parseDelimList(c, i,
-            Operator.BraceOpen, Operator.BraceClose, Operator.Comma,
-            'key-value pair', (c, i) => {
-                let n = 0;
+    const open = parseOperator(s, i + n, "(");
+    if (open.failed()) return open;
+    n += open.n;
 
-                const name = parseIdentifier(c, i);
-                if (name.failed) return name.error(new Message("Expected a key"));
-                n += name.n;
+    const res = parseExpression(s, i + n);
+    if (res.failed()) return ParseRes.err("Expected expression in parens", i + n, res);
+    n += res.n;
 
-                if (!c.get(i + n)?.isOperator(Operator.Colon)) return ParseResult.error(new Message("Expected a colon after key"));
-                n++;
+    const close = parseOperator(s, i + n, ")");
+    if (close.failed()) return ParseRes.err("Expected a closing paren", i + n, close);
+    n += close.n;
 
-                const value = parseExpression(c, i + n);
-                if (value.failed) return name.error(new Message("Expected a key"));
-                n += value.n;
-
-                return ParseResult.res(<[string, Node]>[ name.val!.toString(), value.val! ], n);
-            }
-        ).map((v) => new ObjectLiteralNode(Object.fromEntries(v)));
+    return ParseRes.val(res.res!, n);
+}
+function _parseExpressionPart(s: Source, i: number, obj?: Node, precedence = 0) {
+    if (obj == null) {
+        const raw = RawNode.parse(s, i);
+        if (raw.hasAny()) return raw;
     }
 
-    public toJS() {
-        return `({${Object.entries(this.values).map(([k, v]) => `${k.replace('::', '$$')}: ${v.toJS()}`)}})`;
+    const paren = _parseParens(s, i, obj);
+    if (paren.hasAny()) return paren;
+
+    const str = StringLiteralNode.parse(s, i, obj);
+    if (str.hasAny()) return str;
+
+    const int = IntLiteralNode.parse(s, i, obj);
+    if (int.hasAny()) return int;
+
+    const assign = AssignNode.parse(s, i, obj, precedence);
+    if (assign.hasAny()) return assign;
+
+    const call = CallNode.parse(s, i, obj, precedence);
+    if (call.hasAny()) return call;
+
+    const member = MemberNode.parse(s, i, obj, precedence);
+    if (member.hasAny()) return member;
+
+    const binary = BinaryOperatorNode.parse(s, i, obj, precedence);
+    if (binary.hasAny()) return binary;
+
+    const variable = VariableNode.parse(s, i, obj);
+    if (variable.hasAny()) return variable;
+
+    return ParseRes.fail;
+}
+
+export function parseExpression(s: Source, i: number, obj?: Node, precedence = 0): ParseRes<Node> {
+    let { n, loc } = parseInit(s, i);
+
+    while (true) {
+        const res = _parseExpressionPart(s, i + n, obj, precedence);
+
+        n += res.n;
+        if (res.hasError()) return res;
+        else if (res.failed()) return ParseRes.val(obj!, n);
+        else obj = res.res!;
     }
 }

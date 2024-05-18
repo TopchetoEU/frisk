@@ -1,76 +1,94 @@
-import { Message } from "../utils/Message.ts";
-import { Namespace } from "../utils/Namespace.ts";
-import { Operator } from "../utils/Operator.ts";
-import { Consumer } from "./Consumer.ts";
-import { Node } from "./Node.ts";
-import { ParseResult, errLoc, parseIdentifier, parseDelimList, AsmNode } from "./common.ts";
-import { VarDeclareNode, parseBody } from "./statement.ts";
+import { Node, RawNode, parseIdentifier, parseInit, parseKeyword, parseOperator } from "./index";
+import { Source } from "../utils/Source";
+import { ParseRes } from "./result";
+import { VarDeclareNode, parseBody } from "./statement";
 
-export function parseDefinition(c: Consumer, i: number): ParseResult<Node> {
-    const res = ParseResult.first<{ res: Node, sc: boolean }>(
-        () => AsmNode.parse(c, i).map(v => ({ res: v, sc: true })),
-        () => EntrypointNode.parse(c, i).map(v => ({ res: v, sc: false })),
-        () => VarDeclareNode.parse(c, i).map(v => ({ res: v, sc: true })),
-        () => FunctionNode.parse(c, i).map(v => ({ res: v, sc: false })),
-    );
+export function parseDefinition(s: Source, i: number) {
+    i = parseInit(s, i).loc;
 
-    if (res.failed) return res.error();
-    let n = res.n;
+    const raw = RawNode.parse(s, i);
+    if (raw.hasAny()) return raw;
 
-    if (res.val?.sc) {
-        if (!c.get(i + n)?.isOperator(Operator.Semicolon)) return res.error(new Message("Expected a semicolon after definition", errLoc(c, i, res.n)));
-        n++;
-    }
-    return ParseResult.res(res.val!.res, n);
+    const entry = EntrypointNode.parse(s, i);
+    if (entry.hasAny()) return entry;
+
+    const varDecl = VarDeclareNode.parse(s, i);
+    if (varDecl.hasAny()) return varDecl;
+
+    const func = FunctionNode.parse(s, i);
+    if (func.hasAny()) return func;
+
+    return ParseRes.fail;
 }
 
-export class FunctionNode implements Node {
+export class FunctionNode extends Node {
     public constructor(
-        public readonly name: Namespace,
-        public readonly params: Namespace[],
-        public readonly body: Node[] = [],
-    ) { }
+        loc: string,
+        public readonly name: string,
+        public readonly params: string[],
+        public readonly body: Node[],
+    ) { super(loc); }
 
-    public toJS() {
-        return `function $$${this.name.join('$$')}(${this.params.map(v => '$$' + v.join('$$')).join(',')}){${this.body.map(v => v.toJS()).join(';')}}`;
-    }
+    public static parse(s: Source, i: number) {
+        let { n, loc } = parseInit(s, i);
 
-    public static parse(c: Consumer, i: number) {
-        let n = 0;
-
-        const name = parseIdentifier(c, i + n);
-        if (name.failed) return name.error();
+        const name = parseIdentifier(s, i + n);
+        if (name.failed()) return name;
         n += name.n;
 
-        const params = parseDelimList(c, i + n,
-            Operator.ParenOpen, Operator.ParenClose, Operator.Comma,
-            'parameter', parseIdentifier
-        );
-        if (params.failed) return params.error(new Message("Expected a parameter list", errLoc(c, i, n)));
-        n += params.n;
+        const open = parseOperator(s, i + n, "(");
+        if (open.failed()) return open;
+        n += open.n;
 
-        const body = parseBody(c, i + n);
-        if (body.failed) return body.error(new Message("Expected a function body", errLoc(c, i, n)));
+        let close = parseOperator(s, i + n, ")");
+        n += close.n;
+
+        const params: string[] = [];
+
+        if (close.failed()) while (true) {
+            const argLoc = i + n;
+            const param = parseIdentifier(s, i + n);
+            n += param.n;
+
+            const opLoc = i + n;
+            const delim = parseOperator(s, i + n, ",");
+            const close = parseOperator(s, i + n, ")");
+            n += delim.n;
+            n += close.n;
+
+            if (param.success()) params.push(param.res);
+            else if (close.success()) break;
+            else return ParseRes.err("Expected a parameter", argLoc, param);
+
+            if (close.success()) break;
+
+            if (delim.failed()) return ParseRes.err("Expected a comma or a closing paren", opLoc, delim, close);
+        }
+
+        const body = parseBody(s, i + n, false);
+        if (body.failed()) return ParseRes.err("Expected a function body", i + n, body);
         n += body.n;
 
-        return ParseResult.res(new FunctionNode(name.val!, params.val!, body.val!), n);
+        return ParseRes.val(new FunctionNode(s.toLoc(loc), name.res!, params, body.res!), n);
     }
 }
-export class EntrypointNode implements Node {
-    public constructor(public readonly body: Node[] = []) { }
+export class EntrypointNode extends Node {
+    public constructor(
+        loc: string,
+        public readonly body: Node[],
+    ) { super(loc); }
 
-    public toJS() {
-        return `{${this.body.map(v => v.toJS()).join(';')}}`;
-    }
+    public static parse(s: Source, i: number) {
+        let { n, loc } = parseInit(s, i);
 
-    public static parse(c: Consumer, i: number) {
-        if (!c.get(i)?.isIdentifier("entry")) return ParseResult.fail;
-        let n = 1;
+        const entry = parseKeyword(s, i + n, "entry");
+        if (entry.failed()) return entry;
+        n += entry.n;
 
-        const body = parseBody(c, i + n);
-        if (body.failed) return body.error(new Message("Expected an entrypoint body", errLoc(c, i, n)));
+        const body = parseBody(s, i + n, true);
+        if (body.failed()) return ParseRes.err("Expected an entrypoint body", i + n, body);
         n += body.n;
 
-        return ParseResult.res(new EntrypointNode(body.val!), n);
+        return ParseRes.val(new EntrypointNode(s.toLoc(loc), []), n);
     }
 }
