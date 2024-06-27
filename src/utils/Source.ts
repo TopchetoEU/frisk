@@ -1,7 +1,7 @@
 export class Source {
     private _lineStarts = [ 0 ];
 
-    public toLoc(i: number) {
+    public loc(i: number) {
         let left = 0;
         let right = this._lineStarts.length - 1;
         let row = this._lineStarts.length - 1;

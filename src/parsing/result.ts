@@ -1,33 +1,32 @@
-export class ParseRes<T> {
-    public success(): this is ParseRes<T> & { res: T, n: 0 } {
-        return this.res != null;
-    }
-    public failed(): this is ParseRes<never> & { res: undefined, n: 0 } {
-        return this.res == null;
-    }
-    public hasError(): this is ParseRes<never> & { n: 0, msg: string } {
-        return this.msg != null;
-    }
-    public hasAny(): boolean {
-        return this.res != null || this.msg != null;
-    }
+export interface SuccessResult<T> {
+    type: 'res';
+    val: T;
+    n: number;
+} 
+export interface FailResult {
+    type: 'fail';
+    n: 0;
+}
+export interface ErrorResult {
+    type: 'err';
+    loc: string;
+    msg: string;
+    n: 0;
+}
 
-    public constructor(
-        public readonly res: T | undefined,
-        public readonly n: number,
-        public readonly loc: number,
-        public readonly msg?: string
-    ) { }
+export type Result<T> = SuccessResult<T> | FailResult | ErrorResult;
 
-    public static val<T>(val: T, n: number) {
-        return new ParseRes(val, n, 0);
+export namespace Result {
+    export function val<T>(val: T, n: number): SuccessResult<T> {
+        return { type: 'res', n, val };
     }
-    public static err(err: string, loc: number, ...others: ParseRes<unknown>[]) {
+    export function err(msg: string, loc: string, ...others: Result<any>[]): ErrorResult {
         for (const other of others) {
-            if (other.hasError()) return other as ParseRes<never>;
+            if (other.type === 'err') return other;
         }
 
-        return new ParseRes<never>(undefined, 0, loc, err);
+        return { type: 'err', n: 0, msg, loc };
     }
-    public static readonly fail = new ParseRes<never>(undefined, 0, 0);
+    export const fail: FailResult = { type: 'fail', n: 0 };
+
 }

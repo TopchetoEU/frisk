@@ -1,31 +1,40 @@
-import { Node, RawNode, parseIdentifier, parseInit, parseKeyword, parseOperator } from "./index";
+import { RawNode, parseIdentifier, parseInit, parseKeyword, parseOperator } from "./index";
 import { Source } from "../utils/Source";
-import { ParseRes } from "./result";
+import { Result } from "./result";
 import { VarDeclareNode, parseBody } from "./statement";
+import { parseType } from "./types";
+import { Node } from "../Node";
 
-export function parseDefinition(s: Source, i: number) {
-    i = parseInit(s, i).loc;
+export class ParamNode extends Node {
+    public constructor(
+        loc: string,
+        public readonly name: string,
+        public readonly type: Node,
+    ) { super(loc); }
 
-    const raw = RawNode.parse(s, i);
-    if (raw.hasAny()) return raw;
+    public static parse(s: Source, i: number) {
+        let { n, loc } = parseInit(s, i);
 
-    const entry = EntrypointNode.parse(s, i);
-    if (entry.hasAny()) return entry;
+        const name = parseIdentifier(s, i + n);
+        if (name.type !== 'res') return name;
+        n += name.n;
 
-    const varDecl = VarDeclareNode.parse(s, i);
-    if (varDecl.hasAny()) return varDecl;
+        const colon = parseOperator(s, i + n, ":");
+        if (colon.type !== 'res') return Result.err("Expected a colon", s.loc(i + n), colon);
+        n += colon.n;
 
-    const func = FunctionNode.parse(s, i);
-    if (func.hasAny()) return func;
+        const type = parseType(s, i + n);
+        if (type.type !== 'res') return Result.err("Expected a type", s.loc(i + n), type);
+        n += type.n;
 
-    return ParseRes.fail;
+        return Result.val(new ParamNode(s.loc(loc), name.val, type.val), n);
+    }
 }
-
 export class FunctionNode extends Node {
     public constructor(
         loc: string,
         public readonly name: string,
-        public readonly params: string[],
+        public readonly params: ParamNode[],
         public readonly body: Node[],
     ) { super(loc); }
 
@@ -33,21 +42,21 @@ export class FunctionNode extends Node {
         let { n, loc } = parseInit(s, i);
 
         const name = parseIdentifier(s, i + n);
-        if (name.failed()) return name;
+        if (name.type !== 'res') return name;
         n += name.n;
 
         const open = parseOperator(s, i + n, "(");
-        if (open.failed()) return open;
+        if (open.type !== 'res') return open;
         n += open.n;
 
         let close = parseOperator(s, i + n, ")");
         n += close.n;
 
-        const params: string[] = [];
+        const params: ParamNode[] = [];
 
-        if (close.failed()) while (true) {
-            const argLoc = i + n;
-            const param = parseIdentifier(s, i + n);
+        if (close.type !== 'res') while (true) {
+            const paramLoc = i + n;
+            const param = ParamNode.parse(s, i + n);
             n += param.n;
 
             const opLoc = i + n;
@@ -56,20 +65,49 @@ export class FunctionNode extends Node {
             n += delim.n;
             n += close.n;
 
-            if (param.success()) params.push(param.res);
-            else if (close.success()) break;
-            else return ParseRes.err("Expected a parameter", argLoc, param);
+            if (param.type === 'res') params.push(param.val);
+            else if (close.type === 'res') break;
+            else return Result.err("Expected a parameter", s.loc(paramLoc), param);
 
-            if (close.success()) break;
+            if (close.type === 'res') break;
 
-            if (delim.failed()) return ParseRes.err("Expected a comma or a closing paren", opLoc, delim, close);
+            if (delim.type !== 'res') return Result.err("Expected a comma or a closing paren", s.loc(opLoc), delim, close);
         }
 
         const body = parseBody(s, i + n, false);
-        if (body.failed()) return ParseRes.err("Expected a function body", i + n, body);
+        if (body.type !== 'res') return Result.err("Expected a function body", s.loc(i + n), body);
         n += body.n;
 
-        return ParseRes.val(new FunctionNode(s.toLoc(loc), name.res!, params, body.res!), n);
+        return Result.val(new FunctionNode(s.loc(loc), name.val!, params, body.val!), n);
+    }
+}
+export class TypedefNode extends Node {
+    public constructor(
+        loc: string,
+        public readonly name: string,
+        public readonly type: Node,
+    ) { super(loc); }
+
+    public static parse(s: Source, i: number) {
+        let { n, loc } = parseInit(s, i);
+
+        const entry = parseKeyword(s, i + n, "entry");
+        if (entry.type !== 'res') return entry;
+        n += entry.n;
+
+        const name = parseIdentifier(s, i + n);
+        if (name.type !== 'res') return Result.err("Expected a type name", s.loc(i + n), entry);
+        n += name.n;
+
+        const assign = parseOperator(s, i + n, "=");
+        if (assign.type !== 'res') return Result.err("Expected '='", s.loc(i + n), assign);
+        n += assign.n;
+
+        const type = parseType(s, i + n);
+        if (type.type !== 'res') return Result.err("Expected a type", s.loc(i + n), type);
+        n += type.n;
+
+        return Result.val(new TypedefNode(s.loc(loc), name.val, type.val), n);
     }
 }
 export class EntrypointNode extends Node {
@@ -82,13 +120,31 @@ export class EntrypointNode extends Node {
         let { n, loc } = parseInit(s, i);
 
         const entry = parseKeyword(s, i + n, "entry");
-        if (entry.failed()) return entry;
+        if (entry.type !== 'res') return entry;
         n += entry.n;
 
         const body = parseBody(s, i + n, true);
-        if (body.failed()) return ParseRes.err("Expected an entrypoint body", i + n, body);
+        if (body.type !== 'res') return Result.err("Expected an entrypoint body", s.loc(i + n), body);
         n += body.n;
 
-        return ParseRes.val(new EntrypointNode(s.toLoc(loc), []), n);
+        return Result.val(new EntrypointNode(s.loc(loc), body.val), n);
     }
+}
+
+export function parseDefinition(s: Source, i: number) {
+    i = parseInit(s, i).loc;
+
+    const raw = RawNode.parse(s, i);
+    if (raw.type !== 'fail') return raw;
+
+    const entry = EntrypointNode.parse(s, i);
+    if (entry.type !== 'fail') return entry;
+
+    const varDecl = VarDeclareNode.parse(s, i);
+    if (varDecl.type !== 'fail') return varDecl;
+
+    const func = FunctionNode.parse(s, i);
+    if (func.type !== 'fail') return func;
+
+    return Result.fail;
 }
