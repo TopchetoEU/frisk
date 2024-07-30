@@ -6,7 +6,6 @@ import { Source } from "../utils/Source";
 import { ExpressionParser } from "./expression";
 import { ParseResult } from "./ParseResult";
 
-
 export class CompoundNode extends Node {
     public constructor(
         loc: string,
@@ -319,6 +318,21 @@ export function parseBody(s: Source, i: number, noColon: boolean) {
         n += body.n;
 
         return ParseResult.val(body.val!.nodes, n);
+    }
+
+    const dot = parseOperator(s, i + n, ".");
+    if (dot.type === 'res') {
+        n += dot.n;
+        const res: Node[] = [];
+
+        while (true) {
+            const stm = parseStatement(s, i + n);
+            n += stm.n;
+
+            if (stm.type === 'err') return stm;
+            if (stm.type === 'fail') return ParseResult.val(res, n);
+            if (stm.type === 'res') res.push(stm.val);
+        }
     }
 
     const colon = parseOperator(s, i + n, ":");
