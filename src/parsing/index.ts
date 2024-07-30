@@ -228,9 +228,10 @@ export function parseFile(s: string, f: string): ParseResult<Node[]>;
 export function parseFile(s: Source | string, f?: string) {
     let src;
     let i = 0;
+    const ctx = new Context();
     const res: Node[] = [];
 
-    if (typeof s === 'string') src = new Source(s, f!);
+    if (typeof s === 'string') src = new Source(s, f!, ctx);
     else src = s;
 
     while (true) {
@@ -277,5 +278,37 @@ export class RawNode extends Node {
         n += data.n;
 
         return ParseResult.val(new RawNode(s.loc(loc), new TextDecoder().decode(new Uint8Array(data.val!))), n);
+    }
+}
+
+export class Key<T> {}
+export class Context {
+    private _map = new Map<Key<any>, unknown>();
+
+    public get<T>(key: Key<T>): T | undefined;
+    public get<T>(key: Key<T>, def: T): T;
+    public get(key: Key<any>, def?: any) {
+        if (!this._map.has(key)) return def;
+        else return this._map.get(key);
+    }
+
+    public set<T>(key: Key<T>, val: T): T {
+        const prev = this._map.get(key);
+        this._map.set(key, val);
+        return prev as T;
+    }
+
+    public add<T>(key: Key<T>, val: T): T {
+        if (!this._map.has(key)) {
+            this._map.set(key, val);
+            return val;
+        }
+        else return this._map.get(key) as T;
+    }
+
+    public inc(key: Key<number>, start = 0): number {
+        const val = this.add(key, start);
+        this.set(key, val + 1);
+        return val;
     }
 }

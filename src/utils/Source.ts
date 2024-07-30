@@ -1,3 +1,5 @@
+import { Context } from "../parsing";
+
 export class Source {
     private _lineStarts = [ 0 ];
 
@@ -47,7 +49,11 @@ export class Source {
         return this.source[i];
     }
 
-    public constructor(public readonly source: string, public readonly filename: string) {
+    public constructor(
+        public readonly source: string,
+        public readonly filename: string,
+        public readonly ctx: Context
+    ) {
         for (let i = 0; i  < source.length; i++) {
             if (source[i] === '\n') this._lineStarts.push(i + 1);
         }
