@@ -1,37 +1,32 @@
-import { Source } from "./utils/Source";
-import { Result } from "./parsing/result";
-import { skipWhite } from "./parsing";
+import { TransformerHost } from "./transforming/TransformerHost";
+import { parseFile } from "./parsing";
 import { Node } from "./Node";
-import { parseDefinition } from "./parsing/defs";
+import { Message } from "./utils/Message";
 import * as fs from "fs";
 
-const res: Node[] = [];
-const msgs: string[] = [];
+const nodes: Node[] = [];
+const errors: Message[] = [];
 
 for (const file of process.argv.slice(2)) {
-    const src = new Source(file, fs.readFileSync(file).toString());
-    let i = 0;
-
-    while (true) {
-        i += skipWhite(src, i);
-        if (i >= src.source.length) break;
-
-        const exp = parseDefinition(src, i);
-        if (exp.type !== 'res') {
-            const err = Result.err("Unexpected syntax", src.loc(i), exp);
-            msgs.push(err.loc + ':' + err.msg!);
-            break;
-        }
-        else res.push(exp.val!);
-        i += exp.n;
-        i += skipWhite(src, i);
-    }
+    const res = parseFile(fs.readFileSync(file).toString(), file);
+    if (res.type === 'res')  nodes.push(...res.val);
+    else if (res.type === 'err') errors.push(res);
+    else errors.push({ loc: file, msg: "Failed to compile" });
 }
 
-if (msgs.length > 0) {
-    for (const el of msgs) console.error(el);
+const host = new TransformerHost();
+const transformed: any = host.run(nodes);
+
+if (transformed.type === 'err') {
+    console.error(transformed.loc + ": " + transformed.msg);
     process.exit(1);
 }
 
-console.log(res);
+console.log(transformed.nodes);
+
 debugger;
+
+if (errors.length > 0) {
+    for (const { loc, msg } of errors) console.error(`${loc}: ${msg}`);
+    process.exit(1);
+}

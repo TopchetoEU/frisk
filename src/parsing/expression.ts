@@ -1,7 +1,9 @@
 import { parseCharLiteral, parseIdentifier, parseInit, parseIntLiteral, parseOperator, parseStringLiteral, skipWhite } from ".";
 import { Node } from "../Node";
+import { IterationResult } from "../transforming/TransformerHost";
 import { Source } from "../utils/Source";
-import { Result } from "./result";
+import { arrcmp } from "../utils/arrcmp";
+import { ParseResult } from "./ParseResult";
 
 export class VariableNode extends Node {
     public constructor(
@@ -9,15 +11,19 @@ export class VariableNode extends Node {
         public readonly name: string,
     ) { super(loc); }
 
+    public equals(other: Node): boolean {
+        return this === other || other instanceof VariableNode && this.name === other.name;
+    }
+
     public static parse(s: Source, i: number, obj?: Node) {
-        if (obj != null) return Result.fail;
+        if (obj != null) return ParseResult.fail;
         let { n, loc } = parseInit(s, i);
 
         const res = parseIdentifier(s, i + n);
         if (res.type !== 'res') return res;
         n += res.n;
 
-        return Result.val(new VariableNode(s.loc(loc), res.val!), n);
+        return ParseResult.val(new VariableNode(s.loc(loc), res.val!), n);
     }
 }
 export class StringLiteralNode extends Node {
@@ -26,15 +32,19 @@ export class StringLiteralNode extends Node {
         public readonly data: Uint16Array,
     ) { super(loc); }
 
+    public equals(other: Node): boolean {
+        return this === other || other instanceof StringLiteralNode && arrcmp(this.data, other.data);
+    }
+
     public static parse(s: Source, i: number, obj?: Node) {
-        if (obj != null) return Result.fail;
+        if (obj != null) return ParseResult.fail;
         let { n, loc } = parseInit(s, i);
 
         const data = parseStringLiteral(s, i + n);
         if (data.type !== 'res') return data;
         n += data.n;
 
-        return Result.val(new StringLiteralNode(s.loc(loc), new Uint16Array(data.val!)), n);
+        return ParseResult.val(new StringLiteralNode(s.loc(loc), new Uint16Array(data.val!)), n);
     }
 }
 export class IntLiteralNode extends Node {
@@ -43,23 +53,23 @@ export class IntLiteralNode extends Node {
         public readonly data: bigint,
     ) { super(loc); }
 
+    public equals(other: Node): boolean {
+        return this === other || other instanceof IntLiteralNode && this.data === other.data;
+    }
+
     public static parse(s: Source, i: number, obj?: Node) {
-        if (obj != null) return Result.fail;
+        if (obj != null) return ParseResult.fail;
         let { n, loc } = parseInit(s, i);
 
         const char = parseCharLiteral(s, i + n);
         if (char.type === 'err') return char;
-        if (char.type === 'res') return Result.val(new IntLiteralNode(s.loc(loc), char.val), n + char.n);
+        if (char.type === 'res') return ParseResult.val(new IntLiteralNode(s.loc(loc), char.val), n + char.n);
 
         const int = parseIntLiteral(s, i + n);
         if (int.type === 'err') return char;
-        if (int.type === 'res') return Result.val(new IntLiteralNode(s.loc(loc), int.val), n + int.n);
+        if (int.type === 'res') return ParseResult.val(new IntLiteralNode(s.loc(loc), int.val), n + int.n);
 
-        return Result.fail;
-    }
-
-    public toJS() {
-        return `(${this.data}n)`;
+        return ParseResult.fail;
     }
 }
 export class OperatorNode extends Node {
@@ -68,6 +78,28 @@ export class OperatorNode extends Node {
         public readonly name: string,
         public readonly operands: Node[],
     ) { super(loc); }
+
+    public equals(other: Node): boolean {
+        return this === other ||
+            other instanceof OperatorNode &&
+            this.name === other.name &&
+            arrcmp(this.operands, other.operands, Node.equal);
+    }
+
+    public *iterate(): IterationResult {
+        const before: Node[] = [];
+        const ops: Node[] = [];
+
+        for (const op of this.operands) {
+            const res = yield [op];
+            if (res.length === 0) return "Operand may not be deleted";
+
+            before.push(...res.slice(0, -1));
+            ops.push(res.at(-1)!);
+        }
+
+        return [...before, new OperatorNode(this.loc, this.name, ops)];
+    }
 }
 export class MemberNode extends Node {
     public constructor(
@@ -76,6 +108,21 @@ export class MemberNode extends Node {
         public readonly obj: Node,
         public readonly member: string,
     ) { super(loc); }
+
+    public equals(other: Node): boolean {
+        return this === other ||
+            other instanceof MemberNode &&
+            this.name === other.name &&
+            this.member === other.member &&
+            Node.equal(this.obj, other.obj);
+    }
+
+    public *iterate(): IterationResult {
+        const obj = yield [this.obj];
+        if (obj.length === 0) return "Member access object may not be deleted";
+
+        return [...obj.slice(0, -1), new MemberNode(this.loc, this.name, obj.at(-1)!, this.member)];
+    }
 }
 export class CallNode extends Node {
     public constructor(
@@ -85,10 +132,35 @@ export class CallNode extends Node {
         public readonly args: Node[],
     ) { super(loc); }
 
+    public equals(other: Node): boolean {
+        return this === other ||
+            other instanceof CallNode &&
+            this.name === other.name &&
+            Node.equal(this.obj, other.obj) &&
+            arrcmp(this.args, other.args, Node.equal);
+    }
+
+    public *iterate(): IterationResult {
+        const obj = yield [this.obj];
+        if (obj.length === 0) return "Member access object may not be deleted";
+
+        const before: Node[] = [];
+        const args: Node[] = [];
+
+        for (const op of this.args) {
+            const res = yield [op];
+            if (res.length === 0) return "Operand may not be deleted";
+
+            before.push(...res.slice(0, -1));
+            args.push(res.at(-1)!);
+        }
+
+        return [...obj.slice(0, -1), ...before, new CallNode(this.loc, this.name, obj.at(-1)!, args)];
+    }
 }
 
 export interface Operator {
-    parser(s: Source, i: number, parser: ExpressionParser): Result<(...args: Node[]) => Node>;
+    parser(s: Source, i: number, parser: ExpressionParser): ParseResult<(...args: Node[]) => Node>;
     precedence: number;
     sortI: number;
     associative?: boolean;
@@ -103,7 +175,7 @@ export namespace Operator {
                 if (res.type === 'fail') return res;
                 n += res.n;
 
-                return Result.val((...args) => new OperatorNode(s.loc(loc), name, args), n);
+                return ParseResult.val((...args) => new OperatorNode(s.loc(loc), name, args), n);
             },
             precedence,
             associative,
@@ -123,7 +195,7 @@ export namespace Operator {
                 if (b.type !== 'res') return b;
                 n += b.n;
 
-                return Result.val((...[a, c]) => new OperatorNode(s.loc(loc), name, [a, b.val, c]), n);
+                return ParseResult.val((...[a, c]) => new OperatorNode(s.loc(loc), name, [a, b.val, c]), n);
             },
             precedence,
             associative,
@@ -143,7 +215,7 @@ export namespace Operator {
                 if (identifier.type !== 'res') return identifier;
                 n += identifier.n;
 
-                return Result.val((...args) => new MemberNode(s.loc(loc), name, args[0], identifier.val), n);
+                return ParseResult.val((...args) => new MemberNode(s.loc(loc), name, args[0], identifier.val), n);
             },
             precedence,
             sortI: token.length,
@@ -165,7 +237,7 @@ export namespace Operator {
 
                 if (closeRes.type !== 'res') while (true) {
                     const arg = p.parse(s, i + n, argPrecedence);
-                    if (arg.type !== 'res') return Result.err("Expected an argument", s.loc(i + n), arg);
+                    if (arg.type !== 'res') return ParseResult.err("Expected an argument", s.loc(i + n), arg);
                     n += arg.n;
                     args.push(arg.val);
 
@@ -174,11 +246,11 @@ export namespace Operator {
                     const closeRes = parseOperator(s, i + n, close);
                     n += closeRes.n;
 
-                    if (delimRes.type !== 'res' && closeRes.type !== 'res') return Result.err("Expected a comma or a closing paren", s.loc(i + n));
+                    if (delimRes.type !== 'res' && closeRes.type !== 'res') return ParseResult.err("Expected a comma or a closing paren", s.loc(i + n));
                     if (closeRes.type === 'res') break;
                 }
 
-                return Result.val((...ops) => new CallNode(s.loc(loc), name, ops[0], args), n);
+                return ParseResult.val((...ops) => new CallNode(s.loc(loc), name, ops[0], args), n);
             },
             precedence,
             sortI: token.length,
@@ -193,11 +265,11 @@ interface OperatorInstance {
     n: number;
     loc: string;
 }
-function OperatorInstance(op: Operator, n: number, loc: string, packager: (...args: Node[]) => Node): OperatorInstance {
+function OperatorInstance(op: Operator, argsN: number, loc: string, packager: (...args: Node[]) => Node): OperatorInstance {
     return {
         precedence: op.precedence,
         associative: op.associative,
-        loc, n, packager,
+        loc, n: argsN, packager,
     };
 }
 
@@ -257,14 +329,14 @@ export class ExpressionParser {
                 n += open.n;
 
                 const res = p.parse(s, i + n);
-                if (res.type !== 'res') return Result.err("Expected expression in parens", s.loc(i + n), res);
+                if (res.type !== 'res') return ParseResult.err("Expected expression in parens", s.loc(i + n), res);
                 n += res.n;
 
                 const close = parseOperator(s, i + n, ")");
-                if (close.type !== 'res') return Result.err("Expected a closing paren", s.loc(i + n), close);
+                if (close.type !== 'res') return ParseResult.err("Expected a closing paren", s.loc(i + n), close);
                 n += close.n;
 
-                return Result.val(res.val!, n);
+                return ParseResult.val(res.val!, n);
             },
             (s, i) => StringLiteralNode.parse(s, i),
             (s, i) => IntLiteralNode.parse(s, i),
@@ -272,29 +344,7 @@ export class ExpressionParser {
         ]
     );
 
-    public constructor(
-        public readonly prefix: Operator[],
-        public readonly postfix: Operator[],
-        public readonly infix: Operator[],
-        public readonly parts: ((s: Source, i: number, p: ExpressionParser) => Result<Node>)[],
-    ) {
-        this.infix.sort((a, b) => b.sortI - a.sortI);
-        this.prefix.sort((a, b) => b.sortI - a.sortI);
-        this.postfix.sort((a, b) => b.sortI - a.sortI);
-    }
-
-    private _parsePart(s: Source, i: number) {
-        for (const part of this.parts) {
-            const res = part(s, i, this);
-            if (res.type === 'err') return res;
-            if (res.type === 'fail') continue;
-            return res;
-        }
-
-        return Result.fail;
-    }
-
-    public parse(s: Source, i: number, precedence = 0): Result<Node> {
+    public parse(s: Source, i: number, precedence = 0): ParseResult<Node> {
         let { n } = parseInit(s, i);
 
         const stack: OperatorInstance[] = [];
@@ -308,7 +358,7 @@ export class ExpressionParser {
 
             for (let i = op.n; i > 0; i--) {
                 const arg = operands.pop();
-                if (arg == null) return Result.err(`Operand ${i} missing`, op.loc);
+                if (arg == null) return ParseResult.err(`Operand ${i} missing`, op.loc);
                 args[i - 1] = arg;
             }
 
@@ -404,7 +454,18 @@ export class ExpressionParser {
 
         const res = operands.pop()!;
 
-        if (res == null) return Result.fail;
-        else return Result.val(res, n);
+        if (res == null) return ParseResult.fail;
+        else return ParseResult.val(res, n);
+    }
+
+    public constructor(
+        public readonly prefix: Operator[],
+        public readonly postfix: Operator[],
+        public readonly infix: Operator[],
+        public readonly parts: ((s: Source, i: number, p: ExpressionParser) => ParseResult<Node>)[],
+    ) {
+        this.infix.sort((a, b) => b.sortI - a.sortI);
+        this.prefix.sort((a, b) => b.sortI - a.sortI);
+        this.postfix.sort((a, b) => b.sortI - a.sortI);
     }
 }

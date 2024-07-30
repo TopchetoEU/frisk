@@ -1,9 +1,11 @@
 import { RawNode, parseIdentifier, parseInit, parseKeyword, parseOperator } from "./index";
 import { Source } from "../utils/Source";
-import { Result } from "./result";
+import { ParseResult } from "./ParseResult";
 import { VarDeclareNode, parseBody } from "./statement";
 import { parseType } from "./types";
 import { Node } from "../Node";
+import { IterationResult } from "../transforming/TransformerHost";
+import { arrcmp } from "../utils/arrcmp";
 
 export class ParamNode extends Node {
     public constructor(
@@ -11,6 +13,13 @@ export class ParamNode extends Node {
         public readonly name: string,
         public readonly type: Node,
     ) { super(loc); }
+
+    public equals(other: Node): boolean {
+        return this === other ||
+            other instanceof ParamNode &&
+            this.name === other.name &&
+            Node.equal(this.type, other.type);
+    }
 
     public static parse(s: Source, i: number) {
         let { n, loc } = parseInit(s, i);
@@ -20,14 +29,14 @@ export class ParamNode extends Node {
         n += name.n;
 
         const colon = parseOperator(s, i + n, ":");
-        if (colon.type !== 'res') return Result.err("Expected a colon", s.loc(i + n), colon);
+        if (colon.type !== 'res') return ParseResult.err("Expected a colon", s.loc(i + n), colon);
         n += colon.n;
 
         const type = parseType(s, i + n);
-        if (type.type !== 'res') return Result.err("Expected a type", s.loc(i + n), type);
+        if (type.type !== 'res') return ParseResult.err("Expected a type", s.loc(i + n), type);
         n += type.n;
 
-        return Result.val(new ParamNode(s.loc(loc), name.val, type.val), n);
+        return ParseResult.val(new ParamNode(s.loc(loc), name.val, type.val), n);
     }
 }
 export class FunctionNode extends Node {
@@ -37,6 +46,26 @@ export class FunctionNode extends Node {
         public readonly params: ParamNode[],
         public readonly body: Node[],
     ) { super(loc); }
+
+    public equals(other: Node): boolean {
+        return this === other ||
+            other instanceof FunctionNode &&
+            this.name === other.name &&
+            arrcmp(this.params, other.params, Node.equal);
+    }
+
+    public *iterate(): IterationResult {
+        const params: ParamNode[] = [];
+
+        for (const param of this.params) {
+            for (const el of yield [param]) {
+                if (!(el instanceof ParamNode)) return "Parameters may not be transformed to non-parameter nodes";
+                params.push(el);
+            }
+        }
+
+        return [new FunctionNode(this.loc, this.name, params, yield this.body)];
+    }
 
     public static parse(s: Source, i: number) {
         let { n, loc } = parseInit(s, i);
@@ -67,26 +96,38 @@ export class FunctionNode extends Node {
 
             if (param.type === 'res') params.push(param.val);
             else if (close.type === 'res') break;
-            else return Result.err("Expected a parameter", s.loc(paramLoc), param);
+            else return ParseResult.err("Expected a parameter", s.loc(paramLoc), param);
 
             if (close.type === 'res') break;
 
-            if (delim.type !== 'res') return Result.err("Expected a comma or a closing paren", s.loc(opLoc), delim, close);
+            if (delim.type !== 'res') return ParseResult.err("Expected a comma or a closing paren", s.loc(opLoc), delim, close);
         }
 
         const body = parseBody(s, i + n, false);
-        if (body.type !== 'res') return Result.err("Expected a function body", s.loc(i + n), body);
+        if (body.type !== 'res') return ParseResult.err("Expected a function body", s.loc(i + n), body);
         n += body.n;
 
-        return Result.val(new FunctionNode(s.loc(loc), name.val!, params, body.val!), n);
+        return ParseResult.val(new FunctionNode(s.loc(loc), name.val!, params, body.val!), n);
     }
 }
 export class TypedefNode extends Node {
     public constructor(
         loc: string,
         public readonly name: string,
-        public readonly type: Node,
+        public readonly type?: Node,
     ) { super(loc); }
+
+    public equals(other: Node): boolean {
+        return this === other ||
+            other instanceof TypedefNode &&
+            this.name === other.name &&
+            Node.equal(this.type, other.type);
+    }
+
+    public *iterate(): IterationResult {
+        const res = yield this.type ? [this.type] : [];
+        return [...res.slice(0, -1), new TypedefNode(this.loc, this.name, res.at(-1))];
+    }
 
     public static parse(s: Source, i: number) {
         let { n, loc } = parseInit(s, i);
@@ -96,18 +137,18 @@ export class TypedefNode extends Node {
         n += entry.n;
 
         const name = parseIdentifier(s, i + n);
-        if (name.type !== 'res') return Result.err("Expected a type name", s.loc(i + n), entry);
+        if (name.type !== 'res') return ParseResult.err("Expected a type name", s.loc(i + n), entry);
         n += name.n;
 
         const assign = parseOperator(s, i + n, "=");
-        if (assign.type !== 'res') return Result.err("Expected '='", s.loc(i + n), assign);
+        if (assign.type !== 'res') return ParseResult.err("Expected '='", s.loc(i + n), assign);
         n += assign.n;
 
         const type = parseType(s, i + n);
-        if (type.type !== 'res') return Result.err("Expected a type", s.loc(i + n), type);
+        if (type.type !== 'res') return ParseResult.err("Expected a type", s.loc(i + n), type);
         n += type.n;
 
-        return Result.val(new TypedefNode(s.loc(loc), name.val, type.val), n);
+        return ParseResult.val(new TypedefNode(s.loc(loc), name.val, type.val), n);
     }
 }
 export class EntrypointNode extends Node {
@@ -115,6 +156,16 @@ export class EntrypointNode extends Node {
         loc: string,
         public readonly body: Node[],
     ) { super(loc); }
+
+    public equals(other: Node): boolean {
+        return this === other ||
+            other instanceof EntrypointNode &&
+            arrcmp(this.body, other.body, Node.equal);
+    }
+
+    public *iterate(): IterationResult {
+        return [new EntrypointNode(this.loc, yield this.body)];
+    }
 
     public static parse(s: Source, i: number) {
         let { n, loc } = parseInit(s, i);
@@ -124,10 +175,10 @@ export class EntrypointNode extends Node {
         n += entry.n;
 
         const body = parseBody(s, i + n, true);
-        if (body.type !== 'res') return Result.err("Expected an entrypoint body", s.loc(i + n), body);
+        if (body.type !== 'res') return ParseResult.err("Expected an entrypoint body", s.loc(i + n), body);
         n += body.n;
 
-        return Result.val(new EntrypointNode(s.loc(loc), body.val), n);
+        return ParseResult.val(new EntrypointNode(s.loc(loc), body.val), n);
     }
 }
 
@@ -146,5 +197,5 @@ export function parseDefinition(s: Source, i: number) {
     const func = FunctionNode.parse(s, i);
     if (func.type !== 'fail') return func;
 
-    return Result.fail;
+    return ParseResult.fail;
 }

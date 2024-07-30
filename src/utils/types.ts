@@ -1,1 +1,0 @@
-export type Constructor<T, ArgT extends any[] = any[]> = new (...args: ArgT) => T;

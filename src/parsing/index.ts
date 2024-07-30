@@ -1,6 +1,8 @@
 import { Node } from "../Node";
+import { Message } from "../utils/Message";
 import { Source } from "../utils/Source";
-import { Result } from "./result";
+import { ParseResult } from "./ParseResult";
+import { parseDefinition } from "./defs";
 
 export function skipWhite(s: Source, i: number) {
     let n = 0;
@@ -55,22 +57,22 @@ export function parseKeyword(s: Source, i: number, kw?: string) {
         n++;
     }
 
-    if (res.length == 0) return Result.fail;
+    if (res.length == 0) return ParseResult.fail;
 
     if (kw != null) {
-        if (kw != res) return Result.fail;
-        else return Result.val(res, n);
+        if (kw != res) return ParseResult.fail;
+        else return ParseResult.val(res, n);
     }
-    else return Result.val(res, n);
+    else return ParseResult.val(res, n);
 }
 export function parseOperator(s: Source, i: number, op: string) {
     let { n } = parseInit(s, i);
 
     for (let j = 0; j < op.length; j++, n++) {
-        if (s.at(i + n) != op[j]) return Result.fail;
+        if (s.at(i + n) != op[j]) return ParseResult.fail;
     }
 
-    return Result.val(op, n);
+    return ParseResult.val(op, n);
 }
 export function parseIdentifier(s: Source, i: number) {
     let { n } = parseInit(s, i);
@@ -89,14 +91,14 @@ export function parseIdentifier(s: Source, i: number) {
         res += "::";
 
         const word = parseKeyword(s, i + n);
-        if (word.type !== 'res') return Result.err("Expected an identifier after '::'", s.loc(i + n), word);
+        if (word.type !== 'res') return ParseResult.err("Expected an identifier after '::'", s.loc(i + n), word);
         n += word.n;
         res += word.val;
     }
 
     const underI = res.indexOf("___");
-    if (underI >= 0) return Result.err("Too many sequential underscores", s.loc(loc + underI));
-    else return Result.val(res, n);
+    if (underI >= 0) return ParseResult.err("Too many sequential underscores", s.loc(loc + underI));
+    else return ParseResult.val(res, n);
 }
 
 export function parseIntLiteral(s: Source, i: number, max?: number) {
@@ -113,8 +115,8 @@ export function parseIntLiteral(s: Source, i: number, max?: number) {
             n++;
         }
 
-        if (n === 0) return Result.fail;
-        else return Result.val(res, n);
+        if (n === 0) return ParseResult.fail;
+        else return ParseResult.val(res, n);
     }
 
     let { n } = parseInit(s, i);
@@ -124,17 +126,17 @@ export function parseIntLiteral(s: Source, i: number, max?: number) {
         const type = s.at(i + n + 1);
         if (type === 'x') {
             const res = parseSingle(n + 2, 16n, 16);
-            if (res.type !== 'res') return Result.err("Expected a hexadecimal number", s.loc(i + n + 2), res);
+            if (res.type !== 'res') return ParseResult.err("Expected a hexadecimal number", s.loc(i + n + 2), res);
             return res;
         }
         else if (type === 'o') {
             const res = parseSingle(n + 2, 8n, 8);
-            if (res.type !== 'res') return Result.err("Expected an octal number", s.loc(i + n + 2), res);
+            if (res.type !== 'res') return ParseResult.err("Expected an octal number", s.loc(i + n + 2), res);
             return res;
         }
         else if (type === 'b') {
             const res = parseSingle(n + 2, 2n, 2);
-            if (res.type !== 'res') return Result.err("Expected a binary number", s.loc(i + n + 2), res);
+            if (res.type !== 'res') return ParseResult.err("Expected a binary number", s.loc(i + n + 2), res);
             return res;
         }
     }
@@ -143,28 +145,28 @@ export function parseIntLiteral(s: Source, i: number, max?: number) {
 }
 export function parseChar(s: Source, i: number) {
     let c = s.at(i);
-    if (c == null) return Result.fail;
+    if (c == null) return ParseResult.fail;
 
     if (c == '\\') {
         let n = 1;
         c = s.at(i + n);
-        if (c == null) return Result.err("Expected a character", s.loc(i + n));
+        if (c == null) return ParseResult.err("Expected a character", s.loc(i + n));
 
-        if (c === 't') return Result.val(BigInt('\t'.charCodeAt(0)), 2);
-        if (c === 'n') return Result.val(BigInt('\n'.charCodeAt(0)), 2);
-        if (c === 'v') return Result.val(BigInt('\v'.charCodeAt(0)), 2);
-        if (c === 'f') return Result.val(BigInt('\f'.charCodeAt(0)), 2);
-        if (c === 'r') return Result.val(BigInt('\r'.charCodeAt(0)), 2);
-        if (c === 'e') return Result.val(BigInt('\e'.charCodeAt(0)), 2);
+        if (c === 't') return ParseResult.val(BigInt('\t'.charCodeAt(0)), 2);
+        if (c === 'n') return ParseResult.val(BigInt('\n'.charCodeAt(0)), 2);
+        if (c === 'v') return ParseResult.val(BigInt('\v'.charCodeAt(0)), 2);
+        if (c === 'f') return ParseResult.val(BigInt('\f'.charCodeAt(0)), 2);
+        if (c === 'r') return ParseResult.val(BigInt('\r'.charCodeAt(0)), 2);
+        if (c === 'e') return ParseResult.val(BigInt('\e'.charCodeAt(0)), 2);
         if (/[0-9]/.test(c)) {
             const res = parseIntLiteral(s, i + n, 65536);
             if (res.type !== 'res') return res;
-            return Result.val(res.val!, res.n);
+            return ParseResult.val(res.val!, res.n);
         }
 
-        return Result.val(BigInt(c.charCodeAt(0)), 2);
+        return ParseResult.val(BigInt(c.charCodeAt(0)), 2);
     }
-    else return Result.val(BigInt(c.charCodeAt(0)), 1);
+    else return ParseResult.val(BigInt(c.charCodeAt(0)), 1);
 }
 export function parseStringLiteral(s: Source, i: number) {
     let { n } = parseInit(s, i);
@@ -177,7 +179,7 @@ export function parseStringLiteral(s: Source, i: number) {
 
     while (true) {
         const curr = s.at(i + n);
-        if (curr == null) return Result.err("Unterminated string literal", s.loc(i + n));
+        if (curr == null) return ParseResult.err("Unterminated string literal", s.loc(i + n));
         if (curr == '"') break;
 
         const char = parseChar(s, i + n);
@@ -188,7 +190,7 @@ export function parseStringLiteral(s: Source, i: number) {
     }
     n = n + 1;
 
-    return Result.val(res, n);
+    return ParseResult.val(res, n);
 }
 export function parseCharLiteral(s: Source, i: number) {
     let { n } = parseInit(s, i);
@@ -201,7 +203,7 @@ export function parseCharLiteral(s: Source, i: number) {
 
     while (true) {
         const curr = s.at(i + n);
-        if (curr == null) return Result.err("Unterminated char literal", s.loc(i + n));
+        if (curr == null) return ParseResult.err("Unterminated char literal", s.loc(i + n));
         if (curr == '"') break;
 
         const char = parseChar(s, i + n);
@@ -218,7 +220,34 @@ export function parseCharLiteral(s: Source, i: number) {
     }
     n++;
 
-    return Result.val(res, n);
+    return ParseResult.val(res, n);
+}
+
+export function parseFile(s: Source): ParseResult<Node[]>;
+export function parseFile(s: string, f: string): ParseResult<Node[]>;
+export function parseFile(s: Source | string, f?: string) {
+    let src;
+    let i = 0;
+    const res: Node[] = [];
+
+    if (typeof s === 'string') src = new Source(s, f!);
+    else src = s;
+
+    while (true) {
+        i += skipWhite(src, i);
+        if (i >= src.source.length) break;
+
+        const exp = parseDefinition(src, i);
+
+        if (exp.type === 'err') return exp;
+        else if (exp.type === 'fail') return ParseResult.err('Unexpected syntax', src.loc(i));
+        else {
+            res.push(exp.val!);
+            i += exp.n;
+        }
+    }
+
+    return ParseResult.val(res, i);
 }
 
 export class NoopNode extends Node {
@@ -227,9 +256,9 @@ export class NoopNode extends Node {
 
         const semicolon = parseOperator(s, i + n, ";");
         if (semicolon.type !== 'res') return semicolon;
-        if (semicolon.val === "raw::js") return Result.fail;
+        if (semicolon.val === "raw::js") return ParseResult.fail;
 
-        return Result.val(new NoopNode(s.loc(loc)), n + semicolon.n);
+        return ParseResult.val(new NoopNode(s.loc(loc)), n + semicolon.n);
     }
 }
 export class RawNode extends Node {
@@ -240,13 +269,13 @@ export class RawNode extends Node {
 
         const id = parseIdentifier(s, i);
         if (id.type !== 'res') return id;
-        if (id.val === "raw::js") return Result.fail;
+        if (id.val === "raw::js") return ParseResult.fail;
         n += id.n;
 
         const data = parseStringLiteral(s, i);
         if (data.type !== 'res') return data;
         n += data.n;
 
-        return Result.val(new RawNode(s.loc(loc), new TextDecoder().decode(new Uint8Array(data.val!))), n);
+        return ParseResult.val(new RawNode(s.loc(loc), new TextDecoder().decode(new Uint8Array(data.val!))), n);
     }
 }
