@@ -11,10 +11,6 @@ export class VariableNode extends Node {
         public readonly name: string,
     ) { super(loc); }
 
-    public equals(other: Node): boolean {
-        return this === other || other instanceof VariableNode && this.name === other.name;
-    }
-
     public static parse(s: Source, i: number, obj?: Node) {
         if (obj != null) return ParseResult.fail;
         let { n, loc } = parseInit(s, i);

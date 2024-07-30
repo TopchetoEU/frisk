@@ -1,5 +1,6 @@
 import { Node } from "../Node";
-import { WhileNode } from "../parsing/statement";
+import { Expression } from "./base";
+import { WhileNode } from "./statement";
 
 export interface CFGNode {
     next?: CFGNode;
@@ -53,8 +54,6 @@ function loopToCFG(loop: WhileNode, prev: CFGNode) {
     loop.beforeBody
 }
 
-export function bodyToCFG(body: Node[]) {
+export function bodyToCFG(body: Expression[]) {
     const res: CFGNode[] = [];
-
-    for (const )
 }
