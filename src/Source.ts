@@ -49,7 +49,7 @@ export class Source {
 
     public constructor(public readonly source: string, public readonly filename: string) {
         for (let i = 0; i  < source.length; i++) {
-            if (source[i] === '\n') this._lineStarts.push(i + 1);
+            if (source[i] === "\n") this._lineStarts.push(i + 1);
         }
     }
 }

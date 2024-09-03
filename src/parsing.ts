@@ -11,23 +11,23 @@ export function skipWhite(s: Source, i: number) {
         if (c == null) break;
 
         if (commentState === "one_slash") {
-            if (c === '/') commentState = "single";
-            else if (c === '*') commentState = "multi";
+            if (c === "/") commentState = "single";
+            else if (c === "*") commentState = "multi";
             else return n - 1;
         }
         else if (commentState === "single") {
-            if (c === '\n') commentState = "end";
+            if (c === "\n") commentState = "end";
         }
         else if (commentState === "multi") {
-            if (c === '*') commentState = "multi_first";
+            if (c === "*") commentState = "multi_first";
         }
         else if (commentState === "multi_first") {
-            if (c === '/') commentState = "end";
-            else if (c != '*') commentState = "multi";
+            if (c === "/") commentState = "end";
+            else if (c != "*") commentState = "multi";
         }
-        else if (c === '/') commentState = "one_slash";
+        else if (c === "/") commentState = "one_slash";
 
-        if (commentState === undefined && c !== ' ' && c !== '\n' && c !== '\t') return n;
+        if (commentState === undefined && c !== " " && c !== "\n" && c !== "\t") return n;
         if (commentState === "end") commentState = undefined;
 
         n++;
@@ -77,19 +77,19 @@ export function parseIdentifier(s: Source, i: number) {
     const loc = i + n;
 
     const first = parseKeyword(s, i + n);
-    if (first[0] !== 'res') return first;
+    if (first[0] !== "res") return first;
     n += first[1];
 
     let res = first[2];
 
     while (true) {
         const colons = parseOperator(s, i + n, "::");
-        if (colons[0] !== 'res') break;
+        if (colons[0] !== "res") break;
         n += colons[1];
         res += "::";
 
         const word = parseKeyword(s, i + n);
-        if (word[0] !== 'res') return ParseResult.err("Expected an identifier after '::'", s.loc(i + n), word);
+        if (word[0] !== "res") return ParseResult.err("Expected an identifier after '::'", s.loc(i + n), word);
         n += word[1];
         res += word[2];
     }
@@ -120,21 +120,21 @@ export function parseIntLiteral(s: Source, i: number, max?: number) {
     let { n } = parseInit(s, i);
 
     const start = s.at(i + n);
-    if (start === '0') {
+    if (start === "0") {
         const type = s.at(i + n + 1);
-        if (type === 'x') {
+        if (type === "x") {
             const res = parseSingle(n + 2, 16n, 16);
-            if (res[0] !== 'res') return ParseResult.err("Expected a hexadecimal number", s.loc(i + n + 2), res);
+            if (res[0] !== "res") return ParseResult.err("Expected a hexadecimal number", s.loc(i + n + 2), res);
             return res;
         }
-        else if (type === 'o') {
+        else if (type === "o") {
             const res = parseSingle(n + 2, 8n, 8);
-            if (res[0] !== 'res') return ParseResult.err("Expected an octal number", s.loc(i + n + 2), res);
+            if (res[0] !== "res") return ParseResult.err("Expected an octal number", s.loc(i + n + 2), res);
             return res;
         }
-        else if (type === 'b') {
+        else if (type === "b") {
             const res = parseSingle(n + 2, 2n, 2);
-            if (res[0] !== 'res') return ParseResult.err("Expected a binary number", s.loc(i + n + 2), res);
+            if (res[0] !== "res") return ParseResult.err("Expected a binary number", s.loc(i + n + 2), res);
             return res;
         }
     }
@@ -145,20 +145,20 @@ export function parseChar(s: Source, i: number) {
     let c = s.at(i);
     if (c == null) return ParseResult.fail;
 
-    if (c == '\\') {
+    if (c == "\\") {
         let n = 1;
         c = s.at(i + n);
         if (c == null) return ParseResult.err("Expected a character", s.loc(i + n));
 
-        if (c === 't') return ParseResult.val(BigInt('\t'.charCodeAt(0)), 2);
-        if (c === 'n') return ParseResult.val(BigInt('\n'.charCodeAt(0)), 2);
-        if (c === 'v') return ParseResult.val(BigInt('\v'.charCodeAt(0)), 2);
-        if (c === 'f') return ParseResult.val(BigInt('\f'.charCodeAt(0)), 2);
-        if (c === 'r') return ParseResult.val(BigInt('\r'.charCodeAt(0)), 2);
-        if (c === 'e') return ParseResult.val(BigInt('\e'.charCodeAt(0)), 2);
+        if (c === "t") return ParseResult.val(BigInt("\t".charCodeAt(0)), 2);
+        if (c === "n") return ParseResult.val(BigInt("\n".charCodeAt(0)), 2);
+        if (c === "v") return ParseResult.val(BigInt("\v".charCodeAt(0)), 2);
+        if (c === "f") return ParseResult.val(BigInt("\f".charCodeAt(0)), 2);
+        if (c === "r") return ParseResult.val(BigInt("\r".charCodeAt(0)), 2);
+        if (c === "e") return ParseResult.val(BigInt("\e".charCodeAt(0)), 2);
         if (/[0-9]/.test(c)) {
             const res = parseIntLiteral(s, i + n, 65536);
-            if (res[0] !== 'res') return res;
+            if (res[0] !== "res") return res;
             return ParseResult.val(res[2]!, res[1]);
         }
 
@@ -170,7 +170,7 @@ export function parseStringLiteral(s: Source, i: number) {
     let { n } = parseInit(s, i);
 
     const open = parseOperator(s, i + n, "\"");
-    if (open[0] !== 'res') return open;
+    if (open[0] !== "res") return open;
     n += open[1];
 
     const res: number[] = [];
@@ -178,10 +178,10 @@ export function parseStringLiteral(s: Source, i: number) {
     while (true) {
         const curr = s.at(i + n);
         if (curr == null) return ParseResult.err("Unterminated string literal", s.loc(i + n));
-        if (curr == '"') break;
+        if (curr == "\"") break;
 
         const char = parseChar(s, i + n);
-        if (char[0] !== 'res') return char;
+        if (char[0] !== "res") return char;
         n = n + char[1];
 
         res.push(Number(char[2]!));
@@ -194,7 +194,7 @@ export function parseCharLiteral(s: Source, i: number) {
     let { n } = parseInit(s, i);
 
     const open = parseOperator(s, i + n, "'");
-    if (open[0] !== 'res') return open;
+    if (open[0] !== "res") return open;
     n += open[1];
 
     let res = 0n;
@@ -202,10 +202,10 @@ export function parseCharLiteral(s: Source, i: number) {
     while (true) {
         const curr = s.at(i + n);
         if (curr == null) return ParseResult.err("Unterminated char literal", s.loc(i + n));
-        if (curr == '"') break;
+        if (curr == "'") break;
 
         const char = parseChar(s, i + n);
-        if (char[0] !== 'res') return char;
+        if (char[0] !== "res") return char;
         n += char[1];
 
         let data = char[2]!;
@@ -234,7 +234,7 @@ export namespace Operator {
                 let { n, loc } = parseInit(s, i);
 
                 const res = parseOperator(s, i + n, token);
-                if (res[0] === 'fail') return res;
+                if (res[0] === "fail") return res;
                 n += res[1];
 
                 return ParseResult.val((...args) => [ "call", name, ...args ], n);
@@ -250,15 +250,15 @@ export namespace Operator {
                 let { n, loc } = parseInit(s, i);
 
                 const res = parseOperator(s, i + n, tokenA);
-                if (res[0] === 'fail') return res;
+                if (res[0] === "fail") return res;
                 n += res[1];
 
                 const b = p.parse(s, i + n, precedence);
-                if (b[0] !== 'res') return b;
+                if (b[0] !== "res") return b;
                 n += b[1];
 
                 const res2 = parseOperator(s, i + n, tokenB);
-                if (res2[0] === 'fail') return res2;
+                if (res2[0] === "fail") return res2;
                 n += res2[1];
 
                 return ParseResult.val((a, c) => [ "call", name, a, b[2], c ], n);
@@ -274,11 +274,11 @@ export namespace Operator {
                 let { n, loc } = parseInit(s, i);
 
                 const op = parseOperator(s, i, token);
-                if (op[0] === 'fail') return op;
+                if (op[0] === "fail") return op;
                 n += op[1];
 
                 const identifier = parseIdentifier(s, i);
-                if (identifier[0] !== 'res') return identifier;
+                if (identifier[0] !== "res") return identifier;
                 n += identifier[1];
 
                 return ParseResult.val(a => ["call", name, a], n);
@@ -293,7 +293,7 @@ export namespace Operator {
                 let { n, loc } = parseInit(s, i);
 
                 const openRes = parseOperator(s, i + n, open);
-                if (openRes[0] !== 'res') return openRes;
+                if (openRes[0] !== "res") return openRes;
                 n += openRes[1];
 
                 let closeRes = parseOperator(s, i + n, close);
@@ -301,9 +301,9 @@ export namespace Operator {
 
                 const args: Value[] = [];
 
-                if (closeRes[0] !== 'res') while (true) {
+                if (closeRes[0] !== "res") while (true) {
                     const arg = p.parse(s, i + n, argPrecedence);
-                    if (arg[0] !== 'res') return ParseResult.err("Expected an argument", s.loc(i + n), arg);
+                    if (arg[0] !== "res") return ParseResult.err("Expected an argument", s.loc(i + n), arg);
                     n += arg[1];
                     args.push(arg[2]);
 
@@ -312,8 +312,8 @@ export namespace Operator {
                     const closeRes = parseOperator(s, i + n, close);
                     n += closeRes[1];
 
-                    if (delimRes[0] !== 'res' && closeRes[0] !== 'res') return ParseResult.err("Expected a comma or a closing paren", s.loc(i + n));
-                    if (closeRes[0] === 'res') break;
+                    if (delimRes[0] !== "res" && closeRes[0] !== "res") return ParseResult.err("Expected a comma or a closing paren", s.loc(i + n));
+                    if (closeRes[0] === "res") break;
                 }
 
                 return ParseResult.val(func => name == null ? ["call", func, ...args] : ["call", name, func, ...args], n);
@@ -342,65 +342,65 @@ function OperatorInstance(op: Operator, argsN: number, loc: string, packager: (.
 export class ExpressionParser {
     public static readonly default = new ExpressionParser(
         [
-            Operator.token('op::neg', '-', 14),
-            Operator.token('op::pos', '+', 14),
-            Operator.token('op::flip', '~', 14),
-            Operator.token('op::inc_prefix', '++', 14),
-            Operator.token('op::dec_prefix', '--', 14),
+            Operator.token("op::neg", "-", 14),
+            Operator.token("op::pos", "+", 14),
+            Operator.token("op::flip", "~", 14),
+            Operator.token("op::inc_prefix", "++", 14),
+            Operator.token("op::dec_prefix", "--", 14),
         ],
         [
-            Operator.token('op::inc_postfix', '++', 15),
-            Operator.token('op::dec_postfix', '--', 15),
-            Operator.member('member::obj', '.', 15),
-            Operator.member('member::ptr', '->', 15),
-            Operator.call('invoke', '(', ')', ',', 0, 15),
-            Operator.call('index', '[', ']', ',', 0, 15),
-            Operator.call(undefined, '#(', ')', ',', 0, 15),
+            Operator.token("op::inc_postfix", "++", 15),
+            Operator.token("op::dec_postfix", "--", 15),
+            Operator.member("member::obj", ".", 15),
+            Operator.member("member::ptr", "->", 15),
+            Operator.call("invoke", "(", ")", ",", 0, 15),
+            Operator.call("index", "[", "]", ",", 0, 15),
+            Operator.call(undefined, "#(", ")", ",", 0, 15),
         ],
         [
-            Operator.token('op::mult', '*', 13),
-            Operator.token('op::div', '/', 13),
-            Operator.token('op::mod', '%', 13),
+            Operator.token("op::mult", "*", 13),
+            Operator.token("op::div", "/", 13),
+            Operator.token("op::mod", "%", 13),
 
-            Operator.token('op::add', '+', 12),
-            Operator.token('op::sub', '-', 12),
+            Operator.token("op::add", "+", 12),
+            Operator.token("op::sub", "-", 12),
 
-            Operator.token('op::shift_left', '<<', 11),
-            Operator.token('op::shift_right', '>>', 11),
+            Operator.token("op::shift_left", "<<", 11),
+            Operator.token("op::shift_right", ">>", 11),
 
-            Operator.token('op::lt', '<', 10),
-            Operator.token('op::gt', '>', 10),
-            Operator.token('op::lte', '<=', 10),
-            Operator.token('op::gte', '>=', 10),
+            Operator.token("op::lt", "<", 10),
+            Operator.token("op::gt", ">", 10),
+            Operator.token("op::lte", "<=", 10),
+            Operator.token("op::gte", ">=", 10),
 
-            Operator.token('op::eq', '==', 9),
-            Operator.token('op::neq', '!=', 9),
+            Operator.token("op::eq", "==", 9),
+            Operator.token("op::neq", "!=", 9),
 
-            Operator.token('op::and', '&', 8),
-            Operator.token('op::xor', '^', 7),
-            Operator.token('op::or', '|', 6),
+            Operator.token("op::and", "&", 8),
+            Operator.token("op::xor", "^", 7),
+            Operator.token("op::or", "|", 6),
 
-            Operator.token('logical::and', '&&', 5),
-            Operator.token('logical::or', '||', 4),
+            Operator.token("logical::and", "&&", 5),
+            Operator.token("logical::or", "||", 4),
 
-            // Operator.trinary('op::trinary', '?', ':', 3, true),
+            // Operator.trinary("op::trinary", "?", ":", 3, true),
 
-            Operator.token('op::assign', '=', 2, true),
+            Operator.token("op::assign", "=", 2, true),
         ],
         [
             (s, i, p) => {
                 let { n } = parseInit(s, i);
 
                 const open = parseOperator(s, i + n, "(");
-                if (open[0] !== 'res') return open;
+                if (open[0] !== "res") return open;
                 n += open[1];
 
                 const res = p.parse(s, i + n);
-                if (res[0] !== 'res') return ParseResult.err("Expected expression in parens", s.loc(i + n), res);
+                if (res[0] !== "res") return ParseResult.err("Expected expression in parens", s.loc(i + n), res);
                 n += res[1];
 
                 const close = parseOperator(s, i + n, ")");
-                if (close[0] !== 'res') return ParseResult.err("Expected a closing paren", s.loc(i + n), close);
+                if (close[0] !== "res") return ParseResult.err("Expected a closing paren", s.loc(i + n), close);
                 n += close[1];
 
                 return ParseResult.val(res[2], n);
@@ -409,15 +409,15 @@ export class ExpressionParser {
                 let { n } = parseInit(s, i);
 
                 const open = parseOperator(s, i + n, "#(");
-                if (open[0] !== 'res') return open;
+                if (open[0] !== "res") return open;
                 n += open[1];
 
                 const res = p.parse(s, i + n);
-                if (res[0] !== 'res') return ParseResult.err("Expected expression in parens", s.loc(i + n), res);
+                if (res[0] !== "res") return ParseResult.err("Expected expression in parens", s.loc(i + n), res);
                 n += res[1];
 
                 const close = parseOperator(s, i + n, ")");
-                if (close[0] !== 'res') return ParseResult.err("Expected a closing paren", s.loc(i + n), close);
+                if (close[0] !== "res") return ParseResult.err("Expected a closing paren", s.loc(i + n), close);
                 n += close[1];
 
                 return ParseResult.val(["call", "capsule", res[2]], n);
@@ -427,7 +427,7 @@ export class ExpressionParser {
                 const res: Value[] = [];
 
                 const open = parseOperator(s, i + n, "{");
-                if (open[0] !== 'res') return open;
+                if (open[0] !== "res") return open;
                 n += open[1];
 
                 while (true) {
@@ -442,20 +442,20 @@ export class ExpressionParser {
                     const close = parseOperator(s, i + n, "}");
                     n += close[1];
 
-                    if (stm[0] !== 'res' && close[0] !== 'res') return ParseResult.err("Expected a statement", s.loc(stmI), stm, close);
-                    if (stm[0] === 'res') res.push(stm[2]);
-                    if (end[0] !== 'res') return ParseResult.err("Expected a semicolon", s.loc(endI));
-                    if (close[0] === 'res') break;
+                    if (stm[0] !== "res" && close[0] !== "res") return ParseResult.err("Expected a statement", s.loc(stmI), stm, close);
+                    if (stm[0] === "res") res.push(stm[2]);
+                    if (end[0] !== "res") return ParseResult.err("Expected a semicolon", s.loc(endI));
+                    if (close[0] === "res") break;
                 }
 
-                return ParseResult.val([ "call", 'op::comp', ...res ], n);
+                return ParseResult.val([ "call", "op::comp", ...res ], n);
             },
             (s, i, p) => {
                 let { n, loc } = parseInit(s, i);
                 const res: Value[] = [];
 
                 const open = parseOperator(s, i + n, "[");
-                if (open[0] !== 'res') return open;
+                if (open[0] !== "res") return open;
                 n += open[1];
 
                 while (true) {
@@ -468,10 +468,10 @@ export class ExpressionParser {
                     const close = parseOperator(s, i + n, "]");
                     n += close[1];
 
-                    if (stm[0] !== 'res' && close[0] !== 'res') return ParseResult.err("Expected a statement", s.loc(stmI), stm, close);
-                    if (stm[0] === 'res') res.push(stm[2]);
-                    if (close[0] === 'res') break;
-                    if (end[0] !== 'res') return ParseResult.err("Expected a semicolon", s.loc(n + i));
+                    if (stm[0] !== "res" && close[0] !== "res") return ParseResult.err("Expected a statement", s.loc(stmI), stm, close);
+                    if (stm[0] === "res") res.push(stm[2]);
+                    if (close[0] === "res") break;
+                    if (end[0] !== "res") return ParseResult.err("Expected a semicolon", s.loc(n + i));
                 }
 
                 return ParseResult.val(["call", "new", "list", ...res], n);
@@ -481,11 +481,11 @@ export class ExpressionParser {
                 const res: Value[] = [];
 
                 const type = parseIdentifier(s, i + n);
-                if (type[0] !== 'res') return type;
+                if (type[0] !== "res") return type;
                 n += type[1];
 
                 const open = parseOperator(s, i + n, "{");
-                if (open[0] !== 'res') return open;
+                if (open[0] !== "res") return open;
                 n += open[1];
 
                 while (true) {
@@ -498,10 +498,10 @@ export class ExpressionParser {
                     const close = parseOperator(s, i + n, "}");
                     n += close[1];
 
-                    if (stm[0] !== 'res' && close[0] !== 'res') return ParseResult.err("Expected a statement", s.loc(stmI), stm, close);
-                    if (stm[0] === 'res') res.push(stm[2]);
-                    if (close[0] === 'res') break;
-                    if (end[0] !== 'res') return ParseResult.err("Expected a semicolon", s.loc(n + i));
+                    if (stm[0] !== "res" && close[0] !== "res") return ParseResult.err("Expected a statement", s.loc(stmI), stm, close);
+                    if (stm[0] === "res") res.push(stm[2]);
+                    if (close[0] === "res") break;
+                    if (end[0] !== "res") return ParseResult.err("Expected a semicolon", s.loc(n + i));
                 }
 
                 return ParseResult.val(["call", "new", type[2], ...res], n);
@@ -510,7 +510,7 @@ export class ExpressionParser {
                 let { n } = parseInit(s, i);
 
                 const data = parseStringLiteral(s, i + n);
-                if (data[0] !== 'res') return data;
+                if (data[0] !== "res") return data;
                 n += data[1];
 
                 return ParseResult.val(String.fromCharCode(...data[2]), n);
@@ -519,12 +519,12 @@ export class ExpressionParser {
                 let { n, loc } = parseInit(s, i);
         
                 const char = parseCharLiteral(s, i + n);
-                if (char[0] === 'err') return char;
-                if (char[0] === 'res') return ParseResult.val(char[2], n + char[1]);
+                if (char[0] === "err") return char;
+                if (char[0] === "res") return ParseResult.val(char[2], n + char[1]);
         
                 const int = parseIntLiteral(s, i + n);
-                if (int[0] === 'err') return char;
-                if (int[0] === 'res') return ParseResult.val(int[2], n + int[1]);
+                if (int[0] === "err") return char;
+                if (int[0] === "res") return ParseResult.val(int[2], n + int[1]);
         
                 return ParseResult.fail;
             },
@@ -532,10 +532,10 @@ export class ExpressionParser {
                 let { n } = parseInit(s, i);
 
                 const res = parseIdentifier(s, i + n);
-                if (res[0] !== 'res') return res;
+                if (res[0] !== "res") return res;
                 n += res[1];
 
-                return ParseResult.val(["call", 'get', res[2]], n);
+                return ParseResult.val(["call", "get", res[2]], n);
             }
         ]
     );
@@ -585,8 +585,8 @@ export class ExpressionParser {
                     const opLoc = s.loc(i + n);
 
                     const opRes = currOp.parser(s, i + n, this);
-                    if (opRes[0] === 'fail') continue;
-                    if (opRes[0] === 'err') return opRes;
+                    if (opRes[0] === "fail") continue;
+                    if (opRes[0] === "err") return opRes;
                     n += opRes[1];
 
                     stack.push(OperatorInstance(currOp, 1, opLoc, opRes[2]));
@@ -597,8 +597,8 @@ export class ExpressionParser {
 
             for (const part of this.parts) {
                 const res = part(s, i + n, this);
-                if (res[0] === 'err') return res;
-                if (res[0] === 'fail') continue;
+                if (res[0] === "err") return res;
+                if (res[0] === "fail") continue;
                 operands.push(res[2]);
                 n += res[1];
                 break;
@@ -612,8 +612,8 @@ export class ExpressionParser {
                     const opLoc = s.loc(i + n);
 
                     const opRes = currOp.parser(s, i + n, this);
-                    if (opRes[0] === 'fail') continue;
-                    if (opRes[0] === 'err') return opRes;
+                    if (opRes[0] === "fail") continue;
+                    if (opRes[0] === "err") return opRes;
                     n += opRes[1];
 
                     const res = pushOp(OperatorInstance(currOp, 1, opLoc, opRes[2])) || popOp();
@@ -631,8 +631,8 @@ export class ExpressionParser {
                 const opLoc = s.loc(i + n);
 
                 const opRes = currOp.parser(s, i + n, this);
-                if (opRes[0] === 'fail') continue;
-                if (opRes[0] === 'err') return opRes;
+                if (opRes[0] === "fail") continue;
+                if (opRes[0] === "err") return opRes;
                 n += opRes[1];
 
                 const res = pushOp(OperatorInstance(currOp, 2, opLoc, opRes[2]));
@@ -677,12 +677,12 @@ export class ExpressionParser {
             const exp = parser.parse(src, i);
             i += exp[1];
 
-            const semicolon = parseOperator(src, i, ';');
+            const semicolon = parseOperator(src, i, ";");
             i += semicolon[1];
 
-            if (exp[0] === 'err') return exp;
-            else if (exp[0] === 'fail') return ParseResult.err('Unexpected syntax', src.loc(i));
-            else if (semicolon[0] !== 'res') return ParseResult.err('Expected a semicolon', src.loc(i), semicolon);
+            if (exp[0] === "err") return exp;
+            else if (exp[0] === "fail") return ParseResult.err("Unexpected syntax", src.loc(i));
+            else if (semicolon[0] !== "res") return ParseResult.err("Expected a semicolon", src.loc(i), semicolon);
             else res.push(exp[2]!);
         }
 
@@ -695,8 +695,8 @@ export class ExpressionParser {
         for (const file of files) {
             const res = ExpressionParser.parseFile(file);
 
-            if (res[0] === 'res')  nodes.push(...res[2]);
-            else if (res[0] === 'err') errors.push(`${res[2]}: ${res[3]}`);
+            if (res[0] === "res")  nodes.push(...res[2]);
+            else if (res[0] === "err") errors.push(`${res[2]}: ${res[3]}`);
             else errors.push(`${file}: Failed to compile`);
         }
 
@@ -707,5 +707,5 @@ export class ExpressionParser {
 
 export function compile(...sources: Source[]): Obj<"call"> {
     const res = ExpressionParser.parseFiles(...sources);
-    return ["call", 'op::comp', ...res];
+    return ["call", "op::comp", ...res];
 }

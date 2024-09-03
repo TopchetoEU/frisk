@@ -13,17 +13,18 @@ export type Context = Value;
 export namespace Context {
     export function of(obj: Record<string, Value>): NativeFunc {
         return function *(ctx, key) {
-            if ((typeof key === 'bigint' || typeof key === 'string') && key + "" in obj) {
-                const res = obj[key + ""];
-                if (typeof res === 'function') return ['val', res.bind(obj)];
-                else return ['val', res];
+            if ((typeof key === "bigint" || typeof key === "string") && String(key) in obj) {
+                const res = obj[String(key)];
+
+                if (typeof res === "function") return ["val", res.bind(obj)];
+                else return ["val", res];
             }
             else return ["err", `No variable ${key}`];
         };
     }
     export function args(func: Value, ...args: Value[]): NativeFunc {
         return function *(ctx, key) {
-            if (typeof key === 'bigint') {
+            if (typeof key === "bigint") {
                 if (key === -1n) return func;
                 return args[Number(key)];
             }
@@ -50,8 +51,8 @@ export namespace Context {
         const res = yield *call(ctx, ctx, [key]);
 
         if (Array.isArray(res)) {
-            if (res[0] === 'val') return res[1];
-            else if (res[0] === 'err') return res;
+            if (res[0] === "val") return res[1];
+            else if (res[0] === "err") return res;
         }
         else return res;
     }
@@ -82,10 +83,10 @@ export function exec(gen: ReturnType<NativeFunc>): Value {
     }
 }
 export function call(ctx: Context, func: Value, args: Value[]): ReturnType<NativeFunc> {
-    if (typeof func === 'function') return func(ctx, ...args);
+    if (typeof func === "function") return func(ctx, ...args);
     else return (function *() {
         return yield [Context.chain(function *(ctx, key) {
-            if (typeof key === 'bigint') {
+            if (typeof key === "bigint") {
                 if (key === -1n) return func;
                 if (Number(key) in args) return args[Number(key)];
             }
@@ -95,17 +96,17 @@ export function call(ctx: Context, func: Value, args: Value[]): ReturnType<Nativ
     })();
 }
 export function isErr(val: Value): val is Obj<"err"> {
-    return Array.isArray(val) && val[0] === 'err';
+    return Array.isArray(val) && val[0] === "err";
 }
 export function isObj<T extends string>(val: Value, type?: T): val is Obj<T> {
     if (!Array.isArray(val)) return false;
     return type == null|| val[0] === type;
 }
 export function type(val: Value) {
-    if (val == null) return 'void';
-    if (typeof val === 'bigint') return 'int';
-    if (typeof val === 'string') return 'str';
-    if (typeof val === 'function') return 'native';
+    if (val == null) return "void";
+    if (typeof val === "bigint") return "int";
+    if (typeof val === "string") return "str";
+    if (typeof val === "function") return "native";
     return val[0];
 }
 
@@ -113,8 +114,8 @@ export function serialize(val: Value): Uint8Array {
     const res: number[] = [];
 
     if (val == null) return new Uint8Array([0]);
-    else if (typeof val === 'function') throw new Error("Native values not serializable");
-    else if (typeof val === 'bigint') {
+    else if (typeof val === "function") throw new Error("Native values not serializable");
+    else if (typeof val === "bigint") {
         res.push(1);
 
         while (true) {
@@ -124,12 +125,12 @@ export function serialize(val: Value): Uint8Array {
             if (!cont) break;
         }
     }
-    else if (typeof val === 'string') {
+    else if (typeof val === "string") {
         res.push(2);
         res.push(...new TextEncoder().encode(val));
         res.splice(1, 0, ...serialize(BigInt(val.length)).slice(1));
     }
-    else if (val[0] === 'ref') throw new Error("References not serializable");
+    else if (val[0] === "ref") throw new Error("References not serializable");
     else if (val[0] === "call") {
         res.push(3);
         res.push(...serialize(BigInt(val.length - 1)).slice(1));
