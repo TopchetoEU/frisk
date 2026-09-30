@@ -1,0 +1,11 @@
+let swap(ref int a, ref int b) void {
+	let int tmp = a;
+	a = b;
+	b = tmp;
+}
+
+let new(generic type T, own T val) T@ {
+	let T! res = malloc(sizeof(T));
+	*res = val;
+	return res;
+}

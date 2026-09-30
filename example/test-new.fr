@@ -1,0 +1,109 @@
+// A
+
+let int a = 10;
+// `var` is a modifier for declarations, makes them mutable. Works on types, too!
+let var int b = 10;
+
+// When `var` is specified, as a shorthand, you may omit `let`. This goes for any other decl modifiers, as you will see
+let var int c = 10;
+
+// The type is optional, the expression just remains unresolved
+let d = int(10);
+
+// A shorthand exists for functions:
+let my_func(int a, short b) void {
+	print(a, b);
+}
+
+// This syntax may be applied to any name in a declaration:
+var a = 10, b(int a, int b) int { return a + b; }, c = "test";
+
+// Type declarations are valid expressions, they may exist as a value in the runtime
+// For now, types will be of the type `type`, in future, metatypes (more traditionally constraints or interfaces) will be available
+let my_type = struct {
+	int a;
+	string b;
+};
+
+// A special syntax for declaring structs and enums also exists:
+struct my_type_2 {
+	int a;
+	string b;
+}
+
+// As opposed to:
+let my_func = (int a, short b) void {
+	print(a, b);
+};
+
+// Everything in the top-level file body is evaluated at runtime, as this language only has declarations and expressions
+// So we can do fun stuff like this:
+
+let f = open("my-asset.txt", "r");
+export file_contents = f.read_all();
+f.close();
+
+// Imports give us all the stuff another file declares as `export` in a namespace, yet another object
+
+let stdint = import("std/int");
+
+// Namespaces can be mixed and matched, which can produce extensions:
+
+let stdint = import("std/int");
+let stdint += import("myext/int");
+
+// An ambient `import` statement will append to the current namespace (be careful with overrides):
+
+let outer += import("std/int");
+let int a = 10;
+
+// Each type is implicitly a namespace as well, so it supports this, so long as the type is the exact same:
+let int = import("std/int").int;
+let int += import("myext/int").int;
+
+// You can also ask the compiler to partially evaluate your functions by a parameter
+// If all the parameters are comptime, you have effectively made compile-time evaluation
+
+let my_comptime_func(generic int a, int b) int {
+	return a * b;
+}
+
+export main() void {
+	let int arg = io.read();
+	print(my_comptime_func(10, 5)); // In assembly, this will be `10 * arg`
+	print(my_comptime_func(0, 5)); // An optimizer will collapse this to `0`
+}
+
+// Generics are also possible, as types are simply values:
+// `generic` makes `my_generic_type` a template in respect to the said `generic` type
+// The compiler will specialize stupidly and greedily, if the value is not comptime-known,
+// the function will remain unspecialized. If types are involved, this will involve A LOT of overhead
+// Most sane compilers will warn you of this
+let my_generic_type(generic type T) type {
+	struct list {
+		T* elements;
+		size_t n, cap;
+	}
+
+	// Inner functions will NOT capture the frame namespace, but the function's parent namespace
+	// Captures must be passed as arguments
+	let list.add(list self, T element) void {
+		if (self.n >= self.cap) {
+			self.cap *= 2;
+			self.elements = realloc(self.elements, self.cap * sizeof(self.elements));
+		}
+
+		elements[self.n] = element;
+		self.n += 1;
+	}
+
+	return list;
+}
+
+// `outer` is the fallback namespace, if the name is not found in the current namespace.
+// As any other namespace `outer` can be added to
+
+let outer.a = 10;
+let outer.b = 5;
+
+print(a + b); // 15
