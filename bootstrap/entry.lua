@@ -1,6 +1,6 @@
-require "printing";
-local err = require "compiler.util.err";
-local syntax  = require "compiler.syntax";
+require "bootstrap.util.printing";
+local err = require "bootstrap.util.err";
+local syntax  = require "bootstrap.parser";
 
 local f = assert(io.open(..., "r"));
 

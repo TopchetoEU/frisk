@@ -1,5 +1,5 @@
-local node = require "compiler.util.node";
-local err = require "compiler.util.err";
+local node = require "bootstrap.util.node";
+local err = require "bootstrap.util.err";
 local error = err.throw;
 local lexer = {};
 
@@ -338,7 +338,7 @@ function lexer.parse(src, filename)
 		end
 	end
 
-	table.insert(res, setmetatable({ type = "eof", loc = node.loc(filename, ctx.lines[#ctx.lines] + 1, 1) }, token_meta));
+	table.insert(res, { type = "eof", loc = node.loc(filename, ctx.lines[#ctx.lines] + 1, 1) });
 
 	for i = 1, #res do
 		res[i].loc = nil;

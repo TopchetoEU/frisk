@@ -1,6 +1,6 @@
-local lex = require "compiler.util.lex";
-local node = require "compiler.util.node";
-local err = require "compiler.util.err";
+local lex = require "bootstrap.lexer";
+local node = require "bootstrap.util.node";
+local err = require "bootstrap.util.err";
 
 local error = err.throw;
 
