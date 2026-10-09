@@ -1,0 +1,6 @@
+entry main().main();
+
+context main.
+using std::io.
+
+func main() out.println("test");

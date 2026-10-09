@@ -1,0 +1,30 @@
+using std::io
+using std::it
+using std::await
+using std::generators
+using std::errors.
+
+generator test(start: int, end: int, step: int) {
+    for var i = start; i < end; i += step {
+        yield i;
+    }
+
+    return end;
+}
+
+async_generator test2(f: str) {
+    do {
+        var res = await f.read_line_async();
+
+        switch (res) {
+            case typeof eof: return;
+            default: yield res;
+        }
+    }
+}
+
+func main() {
+    foreach 
+}
+
+entry: main();

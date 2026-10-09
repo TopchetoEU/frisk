@@ -1,6 +1,9 @@
-*
+/*
 !/bootstrap/
-!/bootstrap/**
 !/src/
-!/src/**
-!.gitignore
+!/docs
+!/example
+
+!/.gitignore
+!/readme.md
+!/tsconfig.json

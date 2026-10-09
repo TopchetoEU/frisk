@@ -1,0 +1,14 @@
+proj "test" {
+    author "MeLoL";
+    version "0.0.1";
+
+    src "src/**";
+
+    repo "main" "repo.frisk.io";
+
+    dep "std::core";
+    dep "std::error";
+    dep "std::gen_await";
+
+    using std::core;
+}
