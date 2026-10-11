@@ -111,7 +111,7 @@ local node = {};
 --- @field kind "cond"
 --- @field cond node.exp
 --- @field if_body node.stm
---- @field else_body node.stm
+--- @field else_body? node.stm
 
 --- @class node.loop: node.base
 --- @field kind "loop"
@@ -121,9 +121,9 @@ local node = {};
 
 --- @class node.for: node.base
 --- @field kind "for"
---- @field decl? node.stm | node.var
+--- @field init? node.stm | node.var
 --- @field cond? node.exp
---- @field inc? node.stm | node.exp
+--- @field update? node.stm | node.exp
 --- @field body node.stm
 
 --- @class node.return: node.base

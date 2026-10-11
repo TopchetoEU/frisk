@@ -75,7 +75,10 @@ function stm.parse_decl(ctx, i, force_keywords, attribs)
 		return j, {
 			kind = "decl", loc = ctx.toks[i].loc,
 			mut = var ~= nil, weak = weak ~= nil,
-			attribs = attribs, parts = { { name = name, add = false, val = body } },
+			attribs = attribs, parts = { {
+				name = name, add = false,
+				val = { kind = kind, loc = body.loc, fields = body } --[[@as node.struct]]
+			} },
 		} --[[@as node.decl]];
 	end
 
