@@ -264,20 +264,26 @@ function stm.parse_for(ctx, i)
 	j, ok = common.parse_op(ctx, j, ";");
 	if not ok then
 		j, init = stm.parse_stm_decl(ctx, j);
-		if not init then j, init = ctx:parse_exp(j) end
+		if not init then j, init = stm.parse_stm_exp(ctx, j) end
 		if not init then error(ctx.toks[j].loc, "expected declaration statement, expression or ';'") end
 	end
 
 	j, ok = common.parse_op(ctx, j, ";");
 	if not ok then
-		j, cond = stm.parse_stm_exp(ctx, j);
+		j, cond = ctx:parse_exp(j);
 		if not cond then error(ctx.toks[j].loc, "expected expression or ';'") end
+
+		j, ok = common.parse_op(ctx, j, ";");
+		if not ok then error(ctx.toks[j].loc, "expected ';' after for condition" ) end
 	end
 
 	j, ok = common.parse_op(ctx, j, ")");
 	if not ok then
 		j, update = ctx:parse_exp(j);
 		if not update then error(ctx.toks[j].loc, "expected expression or ')'" ) end
+
+		j, ok = common.parse_op(ctx, j, ")");
+		if not ok then error(ctx.toks[j].loc, "expected ')' after for update" ) end
 	end
 
 	j, body = stm.parse_stm(ctx, j);
