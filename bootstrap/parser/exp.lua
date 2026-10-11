@@ -299,7 +299,7 @@ function exp.parse_exp_single(ctx, i)
 	j, res = exp.parse_exp_func(ctx, j);
 	if res then return j, res end
 
-	j, res = common.parse_exp_parens(ctx, j);
+	j, res = exp.parse_exp_parens(ctx, j);
 	if res then return j, res end
 
 	if ctx.toks[j].type == "int" then

@@ -18,7 +18,7 @@ function stm.parse_attribs(ctx, i)
 		if not ok then break end
 
 		local attrib;
-		j, attrib = ctx:parse_exp_parens(j);
+		j, attrib = ctx:parse_exp(j);
 		table.insert(attribs, attrib);
 	end
 
@@ -85,7 +85,7 @@ function stm.parse_decl(ctx, i, force_keywords, attribs)
 	local test_ok;
 	test_j, test_ok = stm.parse_decl_name(ctx, test_j);
 	if test_ok then test_j, test_ok = common.parse_any_op(ctx, test_j, { ",", "=", ";", "(", "+=" }); end
-	if not test_ok then j, type = ctx:parse_exp_parens(j) end
+	if not test_ok then j, type = ctx:parse_exp(j) end
 
 	while true do
 		local name, val;
@@ -99,7 +99,7 @@ function stm.parse_decl(ctx, i, force_keywords, attribs)
 		if not ok or ok == "+" then
 			table.insert(parts, { name = name, add = ok == "+" } --[[@as node.decl_part]]);
 		elseif ok == "=" or ok == "+=" then
-			j, val = ctx:parse_exp_parens(j);
+			j, val = ctx:parse_exp(j);
 			if not val then error(ctx.toks[j].loc, "expected declaration value") end
 
 			table.insert(parts, { name = name, add = ok == "+=", val = val } --[[@as node.decl_part]]);
@@ -237,7 +237,7 @@ function stm.parse_stm_exp(ctx, i)
 	local j = i;
 	local ok, val;
 
-	j, val = ctx:parse_exp_parens(j);
+	j, val = ctx:parse_exp(j);
 	if not val then return i end
 
 	j, ok = common.parse_op(ctx, j, ";");
