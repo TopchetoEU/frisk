@@ -15,7 +15,6 @@ function common.parse_id(ctx, i)
 	if ctx.toks[i].type ~= "id" then return i end
 	return i + 1, ctx.toks[i].val --[[@as string]];
 end
-
 --- @param ctx parser.ctx
 --- @param i integer
 --- @param val? string
@@ -33,7 +32,6 @@ function common.parse_op(ctx, i, val)
 
 	return i;
 end
-
 --- @param ctx parser.ctx
 --- @param i integer
 --- @param ops table<string> | string[]
@@ -109,7 +107,6 @@ function common.parse_signature(ctx, i)
 
 	return j, { kind = "signature", params = params, spread = spread_param, ret = ret } --[[@as node.signature]];
 end
-
 --- @param ctx parser.ctx
 --- @param i integer
 function common.parse_struct_body(ctx, i)

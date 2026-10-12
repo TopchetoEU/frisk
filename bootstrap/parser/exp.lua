@@ -140,7 +140,6 @@ function exp.parse_exp_parens(ctx, i)
 
 	return j, res;
 end
-
 --- @param ctx parser.ctx
 --- @param i integer
 --- @param op string
@@ -203,7 +202,6 @@ function exp.parse_exp_tuple(ctx, i, op, cl)
 
 	return j, { kind = "tuple", loc = ctx.toks[j].loc, members = members } --[[@as node.tuple]];
 end
-
 --- @param ctx parser.ctx
 --- @param i integer
 function exp.parse_exp_type(ctx, i)
@@ -218,7 +216,6 @@ function exp.parse_exp_type(ctx, i)
 
 	return j, { kind = kind, loc = ctx.toks[j].loc, fields = body } --[[@as node.struct]];
 end
-
 --- @param ctx parser.ctx
 --- @param i integer
 function exp.parse_exp_func_type(ctx, i)
@@ -233,7 +230,6 @@ function exp.parse_exp_func_type(ctx, i)
 
 	return j, body;
 end
-
 --- @param ctx parser.ctx
 --- @param i integer
 function exp.parse_exp_func(ctx, i)
@@ -257,7 +253,6 @@ function exp.parse_exp_call_suffix(ctx, i, prev)
 	if not args then return i end
 	return j, { kind = "call", loc = ctx.toks[i].loc, args = args, func = prev } --[[@as node.call]];
 end
-
 --- @param ctx parser.ctx
 --- @param i integer
 --- @param prev node.exp
@@ -266,7 +261,6 @@ function exp.parse_exp_index_suffix(ctx, i, prev)
 	if not args then return i end
 	return j, { kind = "index", loc = ctx.toks[i].loc, args = args, func = prev } --[[@as node.call]];
 end
-
 --- @param ctx parser.ctx
 --- @param i integer
 --- @param prev node.exp
@@ -314,7 +308,6 @@ function exp.parse_exp_single(ctx, i)
 
 	return i;
 end
-
 --- @param ctx parser.ctx
 --- @param i integer
 --- @param badmask integer
@@ -331,7 +324,6 @@ function exp.parse_exp_prefix(ctx, i, badmask)
 
 	return j, { kind = "op", loc = ctx.toks[i].loc, op = op, args = { val } } --[[@as node.op]];
 end
-
 --- @param ctx parser.ctx
 --- @param i integer
 --- @param a node.exp
